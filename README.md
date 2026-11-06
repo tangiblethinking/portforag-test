@@ -11,3 +11,5 @@ Portfolio RAG chat for Christopher Kenreigh — Product Design, Product Manageme
 - Nightly/auto reindex: `.github/workflows/index.yml` (needs repo secret `GEMINI_KEYS`).
 
 hello
+
+hello
