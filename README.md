@@ -9,7 +9,3 @@ Portfolio RAG chat for Christopher Kenreigh — Product Design, Product Manageme
 - Keys: `GEMINI_KEYS` = ordered, comma-separated (primary first). States ready/cooling(60s)/exhausted(until midnight Pacific)/disabled, ≤3 attempts per request. Shared state uses Upstash/Vercel KV REST env vars if present (`KV_REST_API_URL`, `KV_REST_API_TOKEN`); otherwise per-instance memory (state not shared across serverless instances).
 - Model: `GEMINI_MODEL` (default `gemini-3.5-flash-lite`).
 - Nightly/auto reindex: `.github/workflows/index.yml` (needs repo secret `GEMINI_KEYS`).
-
-hello
-
-hello
