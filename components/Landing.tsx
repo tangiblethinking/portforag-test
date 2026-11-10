@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RecentWorkItem } from "@/lib/recent-work";
 import type { ProjectCardData } from "@/lib/project-display";
-import { NavCardGrid, ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
+import { ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI } from "@/lib/config";
 
 type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: string[]; ids?: string[] };
@@ -89,10 +89,12 @@ export default function Landing({
   resumeMarkdown,
   recentWork,
   projects,
+  browse,
 }: {
   resumeMarkdown: string;
   recentWork: RecentWorkItem[];
   projects: ProjectCardData[];
+  browse: ProjectCardData[];
 }) {
   const [dark, setDark] = useState(false);
   const [stack, setStack] = useState<Frame[]>([]);
@@ -190,26 +192,11 @@ export default function Landing({
     setMsgs((prev) => [...prev, m]);
   }
 
-  const browseCards = [
-    {
-      id: "resume",
-      title: "Resume",
-      body: "Experience, skills, and the arc from design systems to AI-native product work.",
-      onView: () => push({ kind: "resume" }),
-    },
-    {
-      id: "recent",
-      title: "Recent Work",
-      body: "Live deployments from the AppProto router — case studies, prototypes, and experiments.",
-      onView: () => push({ kind: "recent", shown: PAGE }),
-    },
-    {
-      id: "about",
-      title: "About",
-      body: "Who Christopher is, how he works, and what to ask next.",
-      onView: () => push({ kind: "about" }),
-    },
-  ];
+  const browseActions: Record<string, () => void> = {
+    resume: () => push({ kind: "resume" }),
+    recent: () => push({ kind: "recent", shown: PAGE }),
+    about: () => push({ kind: "about" }),
+  };
 
   const composer = (
     <form
@@ -322,7 +309,9 @@ export default function Landing({
 
           <section className="mt-10">
             <h2 className="text-xl font-semibold text-blue-600 dark:text-blue-400">Browse and Explore</h2>
-            <NavCardGrid cards={browseCards.map(({ id, title, body, onView }) => ({ id, title, summary: body, onOpen: onView }))} />
+            <div className="mt-4">
+              <ProjectCardGrid cards={browse} onOpen={(c) => browseActions[c.id]?.()} />
+            </div>
           </section>
 
           <section className="mt-14 border-t border-black/10 pt-8 dark:border-white/10">

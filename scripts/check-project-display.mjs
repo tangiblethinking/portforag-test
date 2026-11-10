@@ -55,9 +55,20 @@ ok(/<Dialog\.Title[^>]*>\{card\.title\}<\/Dialog\.Title>\s*<Dialog\.Close/.test(
 ok(/sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/.test(sheet) && /src=\{card\.liveUrl\}/.test(sheet), "sheet: iframe loads live URL immediately, sandbox unchanged");
 ok(sheet.indexOf('k="Company"') < sheet.indexOf('k="Date"') && sheet.indexOf('k="Date"') < sheet.indexOf("Dialog.Description") && sheet.indexOf("Dialog.Description") < sheet.indexOf('k="Skills"'), "sheet: company, date, description, skills order");
 ok(/<ProjectCardGrid/.test(landing) && /<ProjectSheet/.test(landing), "Landing uses the approved components");
-ok(!/ExploreCard|function Thumb/.test(landing) && /<NavCardGrid cards=\{browseCards\.map/.test(landing), "Browse and Explore use the approved NavCard variant; ExploreCard retired");
-const nav = cards.slice(cards.indexOf("export function NavCard("), cards.indexOf("export function NavCardGrid"));
-ok(/justify-end/.test(nav) && />\s*See More\s*</.test(nav) && !/img|company|date|SkillsChip|consultant/.test(nav), "NavCard: See More right, no invented image/company/date/skills");
-ok(/onView: \(\) => push\(\{ kind: "resume" \}\)/.test(landing) && /onView: \(\) => push\(\{ kind: "recent", shown: PAGE \}\)/.test(landing) && /onView: \(\) => push\(\{ kind: "about" \}\)/.test(landing), "Browse and Explore destinations unchanged");
+ok(!/ExploreCard|function Thumb|NavCard/.test(landing + cards) && /<ProjectCardGrid cards=\{browse\} onOpen=\{\(c\) => browseActions\[c\.id\]\?\.\(\)\} \/>/.test(landing), "Browse and Explore use the approved ProjectCard template; old cards retired");
+ok(/resume: \(\) => push\(\{ kind: "resume" \}\)/.test(landing) && /recent: \(\) => push\(\{ kind: "recent", shown: PAGE \}\)/.test(landing) && /about: \(\) => push\(\{ kind: "about" \}\)/.test(landing), "Browse and Explore destinations unchanged");
+{
+  const browse = fs.readFileSync("lib/browse-cards.ts", "utf8");
+  const resumeMd = fs.readFileSync("data/resume.md", "utf8");
+  const skillsLine = resumeMd.match(/^## Skills\s*\n([^\n]+)/m)[1];
+  ok(/resumeSkills\(resumeMarkdown\)/.test(browse) && skillsLine.split(/,\s*/).length >= 5, "Resume skills come from data/resume.md");
+  const about = fs.readFileSync("components/Landing.tsx", "utf8");
+  ok(["design systems", "design-to-code pipelines", "data-heavy dashboards", "AI-native (RAG) workflows"].every((k) => about.includes(k)), "About skills are named in the About text");
+  ok(/company: FALLBACK_COMPANY, date: null/.test(browse), "Browse cards: unknown company fallback, no date");
+  const img = fs.readFileSync("public/browse/recent-work.webp");
+  ok(img.subarray(8, 12).toString() === "WEBP" && /interview-eight-pi\.vercel\.app/.test(browse), "Recent Work image is the featured deployment capture");
+  const rw = JSON.parse(fs.readFileSync("data/recent-work.json", "utf8")).items;
+  ok(rw[0].url === "https://interview-eight-pi.vercel.app", "first featured deployment is interview-eight-pi");
+}
 console.log(`check-project-display: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);
