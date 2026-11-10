@@ -2,7 +2,8 @@
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RecentWorkItem } from "@/lib/recent-work";
-import type { Project } from "@/lib/rag";
+import type { ProjectCardData } from "@/lib/project-display";
+import { ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI } from "@/lib/config";
 
 type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: string[]; ids?: string[] };
@@ -128,7 +129,7 @@ export default function Landing({
 }: {
   resumeMarkdown: string;
   recentWork: RecentWorkItem[];
-  projects: Project[];
+  projects: ProjectCardData[];
 }) {
   const [dark, setDark] = useState(false);
   const [stack, setStack] = useState<Frame[]>([]);
@@ -139,6 +140,7 @@ export default function Landing({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState<string | null>(null);
   const [line, setLine] = useState("");
+  const [sheet, setSheet] = useState<ProjectCardData | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const top = stack[stack.length - 1] || null;
   const byId = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects]);
@@ -181,32 +183,12 @@ export default function Landing({
   const pop = () => setStack((s) => s.slice(0, -1));
   const closeAll = () => setStack([]);
 
-  function openProject(p: Project) {
+  function openProject(p: ProjectCardData) {
     if (p.id === "resume") {
       push({ kind: "resume" });
       return;
     }
-    const url = p.live_url || p.figma_url;
-    if (!url) {
-      push({ kind: "about" });
-      return;
-    }
-    const match =
-      recentWork.find((r) => r.url === url) ||
-      recentWork.find((r) => r.title.toLowerCase() === p.title.toLowerCase()) ||
-      recentWork.find((r) => r.id === p.id);
-    push({
-      kind: "work",
-      item:
-        match ||
-        ({
-          id: p.id,
-          path: `/${p.id}`,
-          url,
-          title: p.title,
-          blurb: p.summary || [p.company, p.role].filter(Boolean).join(" · ") || p.type,
-        } satisfies RecentWorkItem),
-    });
+    setSheet(p);
   }
 
   async function ask(q: string) {
@@ -305,20 +287,13 @@ export default function Landing({
               {m.text}
             </div>
             {!!m.ids?.length && (
-              <div className="grid gap-4 sm:grid-cols-3">
-                {m.ids
+              <ProjectCardGrid
+                cards={m.ids
                   .map((id) => byId[id])
                   .filter(Boolean)
-                  .slice(0, 3)
-                  .map((p) => (
-                    <ExploreCard
-                      key={p.id}
-                      title={p.title}
-                      body={p.summary || [p.company, p.role].filter(Boolean).join(" · ") || p.type}
-                      onView={() => openProject(p)}
-                    />
-                  ))}
-              </div>
+                  .slice(0, 3)}
+                onOpen={openProject}
+              />
             )}
             {m === msgs[msgs.length - 1] && m.suggestions && (
               <div className="flex flex-wrap gap-2">
@@ -521,6 +496,8 @@ export default function Landing({
           </div>
         </div>
       )}
+
+      <ProjectSheet card={sheet} onClose={() => setSheet(null)} />
     </div>
   );
 }

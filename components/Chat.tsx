@@ -1,4 +1,8 @@
 "use client";
+/**
+ * @deprecated Not rendered by the app (app/page.tsx renders components/Landing.tsx). Its project Card/Sheet are
+ * superseded by components/ProjectCards.tsx (ProjectCardGrid, ProjectSheet). Kept only until it is removed.
+ */
 import { useEffect, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { Project } from "@/lib/rag";
