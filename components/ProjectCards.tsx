@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { ProjectCardData } from "@/lib/project-display";
 
@@ -155,10 +155,8 @@ export function ProjectCard({ card, onOpen }: { card: ProjectCardData; onOpen: (
   );
 }
 
-/** Grid of project cards that all share the tallest card's natural height (no fixed height, no inner scroll). */
-export function ProjectCardGrid({ cards, onOpen }: { cards: ProjectCardData[]; onOpen: (c: ProjectCardData) => void }) {
-  const host = useRef<HTMLDivElement>(null);
-  const ids = cards.map((c) => c.id).join("|");
+/** Keeps every direct <article> child of `host` at the tallest card's natural height (no fixed height, no inner scroll). */
+function useEqualHeights(host: RefObject<HTMLDivElement | null>, key: string) {
   useIsoLayoutEffect(() => {
     const el = host.current;
     if (!el) return;
@@ -177,10 +175,47 @@ export function ProjectCardGrid({ cards, onOpen }: { cards: ProjectCardData[]; o
     items().forEach((a) => { const body = a.lastElementChild; if (body) ro?.observe(body); });
     window.addEventListener("resize", queue);
     return () => { cancelAnimationFrame(raf); ro?.disconnect(); window.removeEventListener("resize", queue); };
-  }, [ids]);
+  }, [key]);
+}
+
+/** Grid of project cards that all share the tallest card's natural height (no fixed height, no inner scroll). */
+export function ProjectCardGrid({ cards, onOpen }: { cards: ProjectCardData[]; onOpen: (c: ProjectCardData) => void }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEqualHeights(host, cards.map((c) => c.id).join("|"));
   return (
     <div ref={host} className="grid gap-4 sm:grid-cols-3">
       {cards.map((c) => <ProjectCard key={c.id} card={c} onOpen={() => onOpen(c)} />)}
+    </div>
+  );
+}
+
+/** Navigation variant of the approved card (Browse and Explore): same shell, text and See More; no image/company/date/skills
+ * because these items have no sourced image or project metadata. */
+export type NavCardData = { id: string; title: string; summary: string; onOpen: () => void };
+export function NavCard({ card }: { card: NavCardData }) {
+  return (
+    <article
+      aria-labelledby={`nc-${card.id}`}
+      className="flex h-full flex-col rounded-[14px] bg-white ring-1 ring-black/5 transition hover:shadow-md dark:bg-neutral-900 dark:ring-white/10"
+    >
+      <div className="flex flex-1 flex-col gap-2 px-4 pb-4 pt-3.5">
+        <h3 id={`nc-${card.id}`} className="text-base font-semibold leading-snug">{card.title}</h3>
+        <p className="text-sm text-neutral-600 dark:text-neutral-300">{card.summary}</p>
+        <div className="mt-auto flex flex-wrap items-center justify-end gap-3 pt-2">
+          <button type="button" aria-haspopup="dialog" onClick={card.onOpen} className="min-h-11 rounded-full bg-[#155dfc] px-5 text-[15px] font-medium text-white">
+            See More
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+export function NavCardGrid({ cards }: { cards: NavCardData[] }) {
+  const host = useRef<HTMLDivElement>(null);
+  useEqualHeights(host, cards.map((c) => c.id).join("|"));
+  return (
+    <div ref={host} className="mt-4 grid gap-4 sm:grid-cols-3">
+      {cards.map((c) => <NavCard key={c.id} card={c} />)}
     </div>
   );
 }

@@ -43,7 +43,7 @@ ok(D["dls"].company === "consultant/Gig" && D["dls"].date === null, "dls: unconf
 const cards = fs.readFileSync("components/ProjectCards.tsx", "utf8");
 const landing = fs.readFileSync("components/Landing.tsx", "utf8");
 ok(!/line-clamp|truncate|text-ellipsis|ellipsis|gradient|\.slice\(0, ?\d/.test(cards), "cards: no clamp/truncate/ellipsis/gradient/slicing");
-ok((cards.match(/>\s*See More\s*</g) || []).length === 1 && /justify-end/.test(cards), "cards: See More, right-aligned");
+{ const pc = cards.slice(cards.indexOf("export function ProjectCard("), cards.indexOf("function useEqualHeights")); ok((pc.match(/>\s*See More\s*</g) || []).length === 1 && /justify-end/.test(pc), "cards: See More, right-aligned"); }
 ok(/<h3[\s\S]*?<\/h3>\s*\{!!card\.skills\.length && <SkillsChip/.test(cards), "cards: Skills chip directly beneath the title");
 ok(/aria-expanded=\{open\}/.test(cards) && /aria-controls=\{id\}/.test(cards) && /"keydown", onKey, true/.test(cards), "cards: Skills popover a11y + Escape");
 ok(!/overflow-(auto|scroll|y-auto)/.test(cards.slice(cards.indexOf("export function ProjectCard("), cards.indexOf("export function ProjectCardGrid"))), "cards: no inner scroll in card");
@@ -55,6 +55,9 @@ ok(/<Dialog\.Title[^>]*>\{card\.title\}<\/Dialog\.Title>\s*<Dialog\.Close/.test(
 ok(/sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/.test(sheet) && /src=\{card\.liveUrl\}/.test(sheet), "sheet: iframe loads live URL immediately, sandbox unchanged");
 ok(sheet.indexOf('k="Company"') < sheet.indexOf('k="Date"') && sheet.indexOf('k="Date"') < sheet.indexOf("Dialog.Description") && sheet.indexOf("Dialog.Description") < sheet.indexOf('k="Skills"'), "sheet: company, date, description, skills order");
 ok(/<ProjectCardGrid/.test(landing) && /<ProjectSheet/.test(landing), "Landing uses the approved components");
-ok((landing.match(/<ExploreCard /g) || []).length === 1, "ExploreCard kept only for Browse and Explore");
+ok(!/ExploreCard|function Thumb/.test(landing) && /<NavCardGrid cards=\{browseCards\.map/.test(landing), "Browse and Explore use the approved NavCard variant; ExploreCard retired");
+const nav = cards.slice(cards.indexOf("export function NavCard("), cards.indexOf("export function NavCardGrid"));
+ok(/justify-end/.test(nav) && />\s*See More\s*</.test(nav) && !/img|company|date|SkillsChip|consultant/.test(nav), "NavCard: See More right, no invented image/company/date/skills");
+ok(/onView: \(\) => push\(\{ kind: "resume" \}\)/.test(landing) && /onView: \(\) => push\(\{ kind: "recent", shown: PAGE \}\)/.test(landing) && /onView: \(\) => push\(\{ kind: "about" \}\)/.test(landing), "Browse and Explore destinations unchanged");
 console.log(`check-project-display: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

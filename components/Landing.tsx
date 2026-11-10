@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { RecentWorkItem } from "@/lib/recent-work";
 import type { ProjectCardData } from "@/lib/project-display";
-import { ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
+import { NavCardGrid, ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI } from "@/lib/config";
 
 type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: string[]; ids?: string[] };
@@ -83,43 +83,6 @@ function inline(s: string) {
 }
 function esc(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
-function Thumb() {
-  return (
-    <div className="mb-4 flex aspect-square items-center justify-center rounded-xl bg-neutral-100 text-neutral-400 dark:bg-neutral-800">
-      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" aria-hidden>
-        <rect x="3" y="5" width="18" height="14" rx="2" stroke="currentColor" strokeWidth="1.5" />
-        <circle cx="8.5" cy="10" r="1.5" fill="currentColor" />
-        <path d="M3 16l5-4 4 3 3-2 6 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-    </div>
-  );
-}
-
-function ExploreCard({
-  title,
-  body,
-  onView,
-}: {
-  title: string;
-  body: string;
-  onView: () => void;
-}) {
-  return (
-    <article className="group flex flex-col rounded-2xl bg-white p-4 shadow-sm ring-1 ring-black/5 transition duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:bg-neutral-900 dark:ring-white/10">
-      <Thumb />
-      <h3 className="text-lg font-semibold">{title}</h3>
-      <p className="mt-2 flex-1 text-sm text-neutral-500">{body}</p>
-      <button
-        type="button"
-        onClick={onView}
-        className="mt-4 inline-flex min-h-10 w-fit items-center gap-1 rounded-lg bg-neutral-100 px-3 text-sm font-medium text-neutral-800 transition group-hover:bg-neutral-200 dark:bg-neutral-800 dark:text-neutral-100 dark:group-hover:bg-neutral-700"
-      >
-        View <span aria-hidden>›</span>
-      </button>
-    </article>
-  );
 }
 
 export default function Landing({
@@ -359,11 +322,7 @@ export default function Landing({
 
           <section className="mt-10">
             <h2 className="text-xl font-semibold text-blue-600 dark:text-blue-400">Browse and Explore</h2>
-            <div className="mt-4 grid gap-4 sm:grid-cols-3">
-              {browseCards.map((c) => (
-                <ExploreCard key={c.id} title={c.title} body={c.body} onView={c.onView} />
-              ))}
-            </div>
+            <NavCardGrid cards={browseCards.map(({ id, title, body, onView }) => ({ id, title, summary: body, onOpen: onView }))} />
           </section>
 
           <section className="mt-14 border-t border-black/10 pt-8 dark:border-white/10">
