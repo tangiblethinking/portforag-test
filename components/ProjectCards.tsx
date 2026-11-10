@@ -193,24 +193,37 @@ function Row({ k, children }: { k: string; children: ReactNode }) {
   return <div><div className="text-xs uppercase text-neutral-500">{k}</div><div>{children}</div></div>;
 }
 
-/** Project details sheet: title + close; live page fills the preview pane; company/date/description/skills on the right. */
-export function ProjectSheet({ card, onClose }: { card: ProjectCardData | null; onClose: () => void }) {
+/** Shared expanded shell for every card destination: grab handle, header with title + close only, then content. */
+export function SheetShell({ open, title, description, onClose, children }: { open: boolean; title: string; description?: string | null; onClose: () => void; children: ReactNode }) {
   return (
-    <Dialog.Root open={!!card} onOpenChange={(o) => { if (!o) onClose(); }}>
+    <Dialog.Root open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 z-50 bg-black/40" />
-        {card && (
+        {open && (
           <Dialog.Content
-            {...(card.summary ? {} : { "aria-describedby": undefined })}
+            {...(description ? {} : { "aria-describedby": undefined })}
             className="sheet fixed inset-x-0 bottom-0 top-[6dvh] z-50 flex flex-col overflow-hidden rounded-t-2xl bg-white dark:bg-neutral-900 sm:top-[8dvh] sm:mx-auto sm:max-w-5xl"
           >
             <div className="bg-neutral-100 px-4 pb-3 pt-2 dark:bg-neutral-800">
               <div className="mx-auto mb-2 h-1.5 w-10 rounded-full bg-current opacity-30" />
               <div className="flex items-center gap-3">
-                <Dialog.Title className="min-w-0 flex-1 text-lg font-semibold leading-snug">{card.title}</Dialog.Title>
+                <Dialog.Title className="min-w-0 flex-1 text-lg font-semibold leading-snug">{title}</Dialog.Title>
                 <Dialog.Close className="min-h-11 min-w-11 text-xl" aria-label="Close">✕</Dialog.Close>
               </div>
             </div>
+            {children}
+          </Dialog.Content>
+        )}
+      </Dialog.Portal>
+    </Dialog.Root>
+  );
+}
+
+/** Project details sheet: title + close; live page fills the preview pane; company/date/description/skills on the right. */
+export function ProjectSheet({ card, onClose }: { card: ProjectCardData | null; onClose: () => void }) {
+  return (
+    <SheetShell open={!!card} title={card?.title ?? ""} description={card?.summary} onClose={onClose}>
+      {card && (
             <div className="flex min-h-0 flex-1 flex-col overflow-auto sm:flex-row sm:overflow-hidden">
               {card.liveUrl && (
                 <div className="flex min-h-[45dvh] flex-1 flex-col bg-neutral-100 dark:bg-black">
@@ -232,9 +245,7 @@ export function ProjectSheet({ card, onClose }: { card: ProjectCardData | null; 
                 )}
               </aside>
             </div>
-          </Dialog.Content>
-        )}
-      </Dialog.Portal>
-    </Dialog.Root>
+      )}
+    </SheetShell>
   );
 }

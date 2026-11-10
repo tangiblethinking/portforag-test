@@ -51,7 +51,7 @@ ok(/aspect-\[1000\/558\][^"]*overflow-hidden rounded-t-\[14px\]/.test(cards), "c
 const sheet = cards.slice(cards.indexOf("export function ProjectSheet"));
 ok(!/Open ↗|View live content|If the preview is blank|Sources|Screenshot|Live content/.test(sheet), "sheet: no external/view-live buttons or helper sections");
 ok(!/SkillsChip/.test(sheet) && /<Row k="Skills"><ul/.test(sheet), "sheet: Skills names list, no chip");
-ok(/<Dialog\.Title[^>]*>\{card\.title\}<\/Dialog\.Title>\s*<Dialog\.Close/.test(sheet), "sheet: header is title + close only");
+{ const shell = cards.slice(cards.indexOf("export function SheetShell"), cards.indexOf("export function ProjectSheet")); ok(/<Dialog\.Title[^>]*>\{title\}<\/Dialog\.Title>\s*<Dialog\.Close[^>]*>✕<\/Dialog\.Close>\s*<\/div>\s*<\/div>\s*\{children\}/.test(shell) && /title=\{card\?\.title/.test(sheet), "sheet: header is title + close only (shared SheetShell)"); }
 ok(/sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/.test(sheet) && /src=\{card\.liveUrl\}/.test(sheet), "sheet: iframe loads live URL immediately, sandbox unchanged");
 ok(sheet.indexOf('k="Company"') < sheet.indexOf('k="Date"') && sheet.indexOf('k="Date"') < sheet.indexOf("Dialog.Description") && sheet.indexOf("Dialog.Description") < sheet.indexOf('k="Skills"'), "sheet: company, date, description, skills order");
 ok(/<ProjectCardGrid/.test(landing) && /<ProjectSheet/.test(landing), "Landing uses the approved components");
@@ -69,6 +69,26 @@ ok(/resume: \(\) => push\(\{ kind: "resume" \}\)/.test(landing) && /recent: \(\)
   ok(img.subarray(8, 12).toString() === "WEBP" && /interview-eight-pi\.vercel\.app/.test(browse), "Recent Work image is the featured deployment capture");
   const rw = JSON.parse(fs.readFileSync("data/recent-work.json", "utf8")).items;
   ok(rw[0].url === "https://interview-eight-pi.vercel.app", "first featured deployment is interview-eight-pi");
+}
+// Universal pattern: every card and expanded view in the runtime uses the approved components.
+{
+  const runtime = landing + cards + fs.readFileSync("app/page.tsx", "utf8");
+  ok(!fs.existsSync("components/Chat.tsx"), "deprecated Chat.tsx removed");
+  ok(!/Open ↗|If the preview is blank|View <span|>\s*View\s*</.test(runtime), "no legacy View/Open/helper strings in runtime card or detail paths");
+  ok(!/kind: "work"|ExploreCard|function Thumb|NavCard|<article/.test(landing), "Landing has no legacy work frame or hand-built cards");
+  ok(!/<iframe/.test(landing) && (cards.match(/<iframe/g) || []).length === 1, "only ProjectSheet renders an iframe");
+  ok(!/role="dialog"/.test(landing) && /<SheetShell/.test(landing) && /export function ProjectSheet[\s\S]*<SheetShell/.test(cards), "Resume/About/Recent Work and project details share SheetShell");
+  ok(/<ProjectCardGrid cards=\{recent\.slice\(0, top\.shown\)\} onOpen=\{setSheet\} \/>/.test(landing) && /Load more/.test(landing), "Recent Work list uses ProjectCardGrid, opens ProjectSheet, keeps Load more");
+  const rwItems = JSON.parse(fs.readFileSync("data/recent-work.json", "utf8")).items;
+  const R = doc.recent || {};
+  ok(rwItems.every((r) => R[r.id] && R[r.id].liveUrl === r.url), "every Recent Work item has display data with its existing URL");
+  for (const r of rwItems) {
+    const d = R[r.id];
+    ok(d.companyKnown || d.company === "consultant/Gig", `recent ${r.id}: company fallback`);
+    ok(d.summary && !trunc.test(d.summary) && (d.summary === r.blurb || d.evidenceRepo), `recent ${r.id}: description is the blurb or evidence text`);
+    ok(d.date === null || d.project, `recent ${r.id}: date only from a matched project`);
+    if (d.image) { const f = "public" + d.image.src; ok(fs.existsSync(f) && fs.readFileSync(f).subarray(8, 12).toString() === "WEBP", `recent ${r.id}: image file`); }
+  }
 }
 console.log(`check-project-display: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

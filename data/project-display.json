@@ -318,5 +318,252 @@
       "image": null,
       "evidenceRepo": null
     }
+  },
+  "recent": {
+    "interview": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Personal recruiter-call prep page for Radix (Product Designer, Scottsdale): company research, role decode, resume alignment and questions to ask.",
+      "skills": [
+        "Interview preparation"
+      ],
+      "liveUrl": "https://interview-eight-pi.vercel.app",
+      "image": {
+        "src": "/recent/interview.webp",
+        "alt": "Top of the Radix Recruiter Interview Cheat Sheet landing page (interview-eight-pi.vercel.app), Vercel project interview",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "Interview",
+      "project": null
+    },
+    "jobs": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Job search and ATS alignment prototype.",
+      "skills": [],
+      "liveUrl": "https://ats-x2-prod-main.vercel.app/jobs",
+      "image": null,
+      "evidenceRepo": null,
+      "project": null
+    },
+    "cart": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Cart and Checkout Refactor: a Figma Make–exported cart, checkout, confirmation and sign-in flow prototype with editable text and images.",
+      "skills": [
+        "Checkout UX",
+        "Interactive prototyping",
+        "Figma-to-code"
+      ],
+      "liveUrl": "https://moderncheckout.vercel.app",
+      "image": {
+        "src": "/projects/modern-checkout.webp",
+        "alt": "Top of the Cart and Checkout Refactor landing page (moderncheckout.vercel.app), Vercel project moderncheckout",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "Moderncheckout",
+      "project": "modern-checkout"
+    },
+    "oma": {
+      "company": "Plexus Worldwide",
+      "companyKnown": true,
+      "date": null,
+      "summary": "OMS Architecture & Manual Intervention: order-management workflow design for resolving stuck or failed orders: search, diagnosis, actions and re-queuing.",
+      "skills": [
+        "UX strategy",
+        "Workflow design",
+        "Stakeholder recommendations"
+      ],
+      "liveUrl": "https://oma-ashen.vercel.app",
+      "image": {
+        "src": "/recent/oma.webp",
+        "alt": "Top of the OMS Architecture & Manual Intervention landing page (oma-ashen.vercel.app), Vercel project oma",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "OMA",
+      "project": null
+    },
+    "ia": {
+      "company": "Plexus Worldwide",
+      "companyKnown": true,
+      "date": null,
+      "summary": "Incentives IA Optimization: information-architecture recommendation for an incentives page: intent-based categories, summary cards and progressive disclosure.",
+      "skills": [
+        "UX strategy",
+        "Information architecture",
+        "Stakeholder recommendations"
+      ],
+      "liveUrl": "https://infoarchdesign.vercel.app",
+      "image": {
+        "src": "/projects/infoarchdesign.webp",
+        "alt": "Top of the Incentives IA Optimization landing page (infoarchdesign.vercel.app), Vercel project infoarchdesign",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "infoarchdesign",
+      "project": "infoarchdesign"
+    },
+    "vlabs": {
+      "company": "Glynlyon Inc",
+      "companyKnown": true,
+      "date": "Timeline 2014 – 2016",
+      "summary": "UX case study of Odysseyware Virtual Science Labs: bringing 20 virtual science labs into an LMS, with role, constraints, process and outcomes.",
+      "skills": [
+        "End-to-end product design",
+        "Leading junior designers",
+        "SME and curriculum collaboration",
+        "EdTech UX"
+      ],
+      "liveUrl": "https://virtual-labs-mu.vercel.app",
+      "image": {
+        "src": "/projects/virtual-labs.webp",
+        "alt": "Top of the UX Case Study: Odysseyware Virtual Science Labs landing page (virtual-labs-mu.vercel.app), Vercel project virtual-labs",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "virtualLabs",
+      "project": "virtual-labs"
+    },
+    "laws": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Legal UX patterns and compliance-minded design.",
+      "skills": [],
+      "liveUrl": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
+      "image": null,
+      "evidenceRepo": null,
+      "project": null
+    },
+    "ape": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Gemini fix iteration (job-array schema wrapper, token cap, link passthrough); the version uxapex.com/ape serves.",
+      "skills": [
+        "AI workflow design",
+        "Job search UX",
+        "Multi-provider LLM integration"
+      ],
+      "liveUrl": "https://ape-x-apple-cl-007v1-gemini-001.vercel.app/ape",
+      "image": {
+        "src": "/recent/ape.webp",
+        "alt": "Top of the Ape X Job Hunt landing page (ape-x-apple-cl-007v1-gemini-001.vercel.app/ape), Vercel project ape-x-apple-cl-007v1-gemini-001",
+        "width": 1000,
+        "height": 558
+      },
+      "evidenceRepo": "ape-x-apple-CL007v1-gemini-001",
+      "project": null
+    },
+    "portfolioa32": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Figma Make export of a portfolio app with a password modal: case-study cards (AI Persona Agent, Design System Architect, Cart & Checkout, Live Metallurgy Dashboard), certifications, résumé view and search. Figma source: Website | Vista Partners.",
+      "skills": [
+        "Case-study curation",
+        "Figma-to-code prototyping"
+      ],
+      "liveUrl": "https://appprotoneov001ai.vercel.app",
+      "image": null,
+      "evidenceRepo": "Appprotoneov001ai",
+      "project": null
+    },
+    "designops": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Design Ops transformation case study across e-commerce and SaaS: stats, workflow comparison, maturity matrix and leadership competencies.",
+      "skills": [
+        "Design operations",
+        "Org maturity",
+        "Workflow design"
+      ],
+      "liveUrl": "https://design-ops-case-study.vercel.app",
+      "image": null,
+      "evidenceRepo": "DesignOpsCaseStudy",
+      "project": null
+    },
+    "ecomm": {
+      "company": "Plexus Worldwide",
+      "companyKnown": true,
+      "date": null,
+      "summary": "Plexus Worldwide UX strategy case study: how UX-led product strategy addressed revenue decline, with problems, research, strategy, roadmap and outcomes.",
+      "skills": [
+        "UX strategy",
+        "Product roadmap",
+        "Executive storytelling",
+        "Research synthesis"
+      ],
+      "liveUrl": "https://director-case-study-ux-bgoals.vercel.app",
+      "image": null,
+      "evidenceRepo": "DirectorCaseStudy_UX_Bgoals",
+      "project": "director-case-study"
+    },
+    "uxtrans": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "UX transformation case study with animated metrics, a UX-laws map, before/after platform comparisons, phases and maturity bars.",
+      "skills": [
+        "UX strategy",
+        "Applied UX laws",
+        "Outcome measurement"
+      ],
+      "liveUrl": "https://company-ux-transform.vercel.app",
+      "image": null,
+      "evidenceRepo": "CompanyUXTransform",
+      "project": null
+    },
+    "discovery": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Executive case study “Reclaiming Discovery”: why a brand disappears from AI search and how to fix its machine-readable representation (AEO/GEO).",
+      "skills": [
+        "AI search strategy",
+        "Content architecture"
+      ],
+      "liveUrl": "https://teststudynew.vercel.app",
+      "image": null,
+      "evidenceRepo": "Teststudynew",
+      "project": null
+    },
+    "persona": {
+      "company": "Plexus Worldwide",
+      "companyKnown": true,
+      "date": null,
+      "summary": "The Persona Project: interactive case study of a centralized, generative persona system at Plexus Worldwide.",
+      "skills": [
+        "Persona systems",
+        "Research operations",
+        "Cross-functional decision support"
+      ],
+      "liveUrl": "https://persongratadata.vercel.app",
+      "image": null,
+      "evidenceRepo": "persongratadata",
+      "project": "persongratadata"
+    },
+    "collaboration": {
+      "company": "consultant/Gig",
+      "companyKnown": false,
+      "date": null,
+      "summary": "Design Operations Guide: an 11-section operating reference for the e-commerce site, customer portal and back-office product cycle, with an accountability model and Jira, Confluence and Workfront setup.",
+      "skills": [
+        "Design operations",
+        "Process design",
+        "Tool governance (Jira, Confluence, Workfront)"
+      ],
+      "liveUrl": "https://opodesignonovo.vercel.app",
+      "image": null,
+      "evidenceRepo": "opodesignonovo",
+      "project": null
+    }
   }
 }

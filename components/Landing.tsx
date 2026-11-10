@@ -1,17 +1,15 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { RecentWorkItem } from "@/lib/recent-work";
 import type { ProjectCardData } from "@/lib/project-display";
-import { ProjectCardGrid, ProjectSheet } from "@/components/ProjectCards";
+import { ProjectCardGrid, ProjectSheet, SheetShell } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI } from "@/lib/config";
 
 type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: string[]; ids?: string[] };
 type Frame =
   | { kind: "resume" }
   | { kind: "about" }
-  | { kind: "recent"; shown: number }
-  | { kind: "work"; item: RecentWorkItem };
+  | { kind: "recent"; shown: number };
 
 const PAGE = 3;
 
@@ -87,12 +85,12 @@ function esc(s: string) {
 
 export default function Landing({
   resumeMarkdown,
-  recentWork,
+  recent,
   projects,
   browse,
 }: {
   resumeMarkdown: string;
-  recentWork: RecentWorkItem[];
+  recent: ProjectCardData[];
   projects: ProjectCardData[];
   browse: ProjectCardData[];
 }) {
@@ -146,7 +144,6 @@ export default function Landing({
   };
   const push = (f: Frame) => setStack((s) => [...s, f]);
   const pop = () => setStack((s) => s.slice(0, -1));
-  const closeAll = () => setStack([]);
 
   function openProject(p: ProjectCardData) {
     if (p.id === "resume") {
@@ -347,103 +344,54 @@ export default function Landing({
         </>
       )}
 
-      {top && (
-        <div className="fixed inset-0 z-40 flex items-stretch justify-center bg-black/45 p-2 sm:p-4" role="dialog" aria-modal="true">
-          <div className="flex h-full w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl dark:bg-neutral-950">
-            <div className="flex items-center gap-2 border-b border-black/10 px-3 py-2 dark:border-white/10">
-              <button type="button" onClick={pop} className="min-h-11 rounded-full px-3 text-sm font-medium text-blue-600">
-                {stack.length > 1 ? "Back" : "Close"}
-              </button>
-              <div className="min-w-0 flex-1 truncate text-center text-sm font-semibold">
-                {top.kind === "resume" && "Resume"}
-                {top.kind === "about" && "About"}
-                {top.kind === "recent" && "Recent Work"}
-                {top.kind === "work" && top.item.title}
-              </div>
-              {top.kind === "work" && (
-                <a href={top.item.url} target="_blank" rel="noreferrer" className="min-h-11 content-center px-3 text-sm text-blue-600">
-                  Open ↗
-                </a>
-              )}
-              <button type="button" onClick={closeAll} aria-label="Close all" className="min-h-11 min-w-11 text-xl">
-                ✕
-              </button>
+      <SheetShell
+        open={!!top}
+        title={top?.kind === "resume" ? "Resume" : top?.kind === "about" ? "About" : top?.kind === "recent" ? "Recent Work" : ""}
+        onClose={pop}
+      >
+        <div className="min-h-0 flex-1 overflow-auto">
+          {top?.kind === "resume" && (
+            <div className="prose-neutral mx-auto max-w-3xl p-6" dangerouslySetInnerHTML={{ __html: resumeHtml }} />
+          )}
+          {top?.kind === "about" && (
+            <div className="mx-auto max-w-2xl space-y-4 p-6">
+              <h2 className="text-2xl font-semibold">{ABOUT.title}</h2>
+              {ABOUT.body.map((p) => (
+                <p key={p} className="leading-relaxed text-neutral-700 dark:text-neutral-300">
+                  {p}
+                </p>
+              ))}
             </div>
-            <div className="min-h-0 flex-1 overflow-auto">
-              {top.kind === "resume" && (
-                <div className="prose-neutral mx-auto max-w-3xl p-6" dangerouslySetInnerHTML={{ __html: resumeHtml }} />
-              )}
-              {top.kind === "about" && (
-                <div className="mx-auto max-w-2xl space-y-4 p-6">
-                  <h2 className="text-2xl font-semibold">{ABOUT.title}</h2>
-                  {ABOUT.body.map((p) => (
-                    <p key={p} className="leading-relaxed text-neutral-700 dark:text-neutral-300">
-                      {p}
-                    </p>
-                  ))}
-                </div>
-              )}
-              {top.kind === "recent" && (
-                <div className="p-4 sm:p-6">
-                  <p className="mb-4 text-sm text-neutral-500">
-                    Live deployments from AppProtoNeoRouter. Showing {Math.min(top.shown, recentWork.length)} of {recentWork.length}.
-                  </p>
-                  <div className="grid gap-4 sm:grid-cols-3">
-                    {recentWork.slice(0, top.shown).map((item) => (
-                      <article key={item.id} className="flex flex-col rounded-2xl bg-neutral-50 p-4 ring-1 ring-black/5 dark:bg-neutral-900 dark:ring-white/10">
-                        <div className="mb-3 flex aspect-[4/3] items-center justify-center rounded-xl bg-neutral-200/70 text-neutral-400 dark:bg-neutral-800">
-                          <span className="text-xs font-medium uppercase tracking-wide">{item.path}</span>
-                        </div>
-                        <h3 className="font-semibold">{item.title}</h3>
-                        <p className="mt-1 flex-1 text-sm text-neutral-500">{item.blurb}</p>
-                        <button
-                          type="button"
-                          onClick={() => push({ kind: "work", item })}
-                          className="mt-3 inline-flex min-h-10 w-fit items-center gap-1 rounded-lg bg-white px-3 text-sm font-medium ring-1 ring-black/10 dark:bg-neutral-800 dark:ring-white/10"
-                        >
-                          View <span aria-hidden>›</span>
-                        </button>
-                      </article>
-                    ))}
-                  </div>
-                  {top.shown < recentWork.length && (
-                    <div className="mt-6 flex justify-center">
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setStack((s) => {
-                            const copy = [...s];
-                            const i = copy.length - 1;
-                            const cur = copy[i];
-                            if (cur?.kind === "recent") copy[i] = { kind: "recent", shown: cur.shown + PAGE };
-                            return copy;
-                          })
-                        }
-                        className="min-h-11 rounded-full bg-blue-600 px-5 text-sm font-medium text-white"
-                      >
-                        Load more
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
-              {top.kind === "work" && (
-                <div className="flex h-full min-h-[70dvh] flex-col">
-                  <iframe
-                    src={top.item.url}
-                    title={top.item.title}
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
-                    className="min-h-0 w-full flex-1 bg-neutral-100 dark:bg-black"
-                  />
-                  <p className="border-t border-black/10 px-4 py-2 text-xs text-neutral-500 dark:border-white/10">
-                    If the preview is blank, the site blocks embedding — use Open ↗.
-                  </p>
+          )}
+          {top?.kind === "recent" && (
+            <div className="p-4 sm:p-6">
+              <p className="mb-4 text-sm text-neutral-500">
+                Live deployments from AppProtoNeoRouter. Showing {Math.min(top.shown, recent.length)} of {recent.length}.
+              </p>
+              <ProjectCardGrid cards={recent.slice(0, top.shown)} onOpen={setSheet} />
+              {top.shown < recent.length && (
+                <div className="mt-6 flex justify-center">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setStack((s) => {
+                        const copy = [...s];
+                        const i = copy.length - 1;
+                        const cur = copy[i];
+                        if (cur?.kind === "recent") copy[i] = { kind: "recent", shown: cur.shown + PAGE };
+                        return copy;
+                      })
+                    }
+                    className="min-h-11 rounded-full bg-blue-600 px-5 text-sm font-medium text-white"
+                  >
+                    Load more
+                  </button>
                 </div>
               )}
             </div>
-          </div>
+          )}
         </div>
-      )}
+      </SheetShell>
 
       <ProjectSheet card={sheet} onClose={() => setSheet(null)} />
     </div>
