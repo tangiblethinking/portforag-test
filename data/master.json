@@ -23,12 +23,10 @@
     "repository": 86,
     "resume": 1,
     "images": 71,
-    "indexable": 86
+    "indexable": 87
   },
   "refresh": {
-    "carried_over": [
-      "virtuallabs"
-    ],
+    "carried_over": [],
     "removed_since_last_build": []
   },
   "aliases": {
@@ -11515,7 +11513,7 @@
     {
       "id": "virtuallabs",
       "kind": "repository",
-      "indexable": false,
+      "indexable": true,
       "recommendation": "Feature",
       "title": "UX Case Study: Odysseyware Virtual Science Labs",
       "title_source": "evidence-map links[].t (live page title)",
