@@ -22,11 +22,38 @@
     "records": 87,
     "repository": 86,
     "resume": 1,
-    "images": 71,
-    "indexable": 87
+    "images": 72,
+    "indexable": 61
   },
   "refresh": {
-    "carried_over": [],
+    "carried_over": [
+      "ape-x-apple-cl007v1-gemini",
+      "ape-x-apple-cl007v1-gemini-002",
+      "appprotoneov001",
+      "appprotoneov001-rev",
+      "appprotoneov002-alt",
+      "appprotoneov002-pcric",
+      "appprotoneov006pnu",
+      "appprotoneov034pali",
+      "ats-x",
+      "backsups",
+      "canvas",
+      "cmspayload",
+      "cmspayloadtest",
+      "fixitaibeta",
+      "jdapi",
+      "payload-website-starter",
+      "payloadcms",
+      "payloadptest",
+      "pcms",
+      "personabehaviorgravitas",
+      "portfotest",
+      "prodportfo",
+      "psms-mbl",
+      "revengany",
+      "sitetest",
+      "uxrnd"
+    ],
     "removed_since_last_build": []
   },
   "aliases": {
@@ -45,10 +72,12 @@
       "cms-payload": "cmspayload",
       "uxrnd": "uxrnd",
       "recent-interview": "interview",
+      "recent-jobs": "ats-x2-prod-main",
       "recent-cart": "moderncheckout",
       "recent-oma": "oma",
       "recent-ia": "infoarchdesign",
       "recent-vlabs": "virtuallabs",
+      "recent-laws": "html-test",
       "recent-ape": "ape-x-apple-cl007v1-gemini-001",
       "recent-portfolioa32": "appprotoneov001ai",
       "recent-designops": "designopscasestudy",
@@ -163,8 +192,10 @@
     {
       "recent_id": "jobs",
       "url": "https://ats-x2-prod-main.vercel.app/jobs",
-      "record_id": null,
-      "match": null
+      "record_id": "ats-x2-prod-main",
+      "match": "explicit link",
+      "image": "ats-x2-prod-main--uxapex-jobs--landing.webp",
+      "basis": "explicit named link (user-approved, Nov 11, 2026): router https://www.uxapex.com/jobs/ serves ats-x2-prod-main; image captured from that router URL"
     },
     {
       "recent_id": "cart",
@@ -193,8 +224,10 @@
     {
       "recent_id": "laws",
       "url": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
-      "record_id": null,
-      "match": null
+      "record_id": "html-test",
+      "match": "explicit link",
+      "image": "html-test--uxapex-laws--landing.webp",
+      "basis": "explicit named link (user-approved, Nov 11, 2026): router https://www.uxapex.com/laws serves the UX Legal page of html-test; image captured from that router URL"
     },
     {
       "recent_id": "ape",
@@ -287,18 +320,6 @@
       "runtime_id": "plexus-alt-text-ai",
       "repo": "PlexusworldwideUX/AltTextAI",
       "reason": "repository owner PlexusworldwideUX is outside the evidence map (tangiblethinking only); not in the master, so not searchable and not shown as a card"
-    },
-    {
-      "source": "data/recent-work.json",
-      "runtime_id": "recent-jobs",
-      "url": "https://ats-x2-prod-main.vercel.app/jobs",
-      "reason": "unsupported alias: Recent Work URL is not an exact evidence-map link or capture URL; listed from data/recent-work.json only, not searchable, no evidence facts"
-    },
-    {
-      "source": "data/recent-work.json",
-      "runtime_id": "recent-laws",
-      "url": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
-      "reason": "unsupported alias: Recent Work URL is not an exact evidence-map link or capture URL; listed from data/recent-work.json only, not searchable, no evidence facts"
     }
   ],
   "records": [
@@ -377,8 +398,32 @@
       "supporting_evidence": [
         "public/resume.html"
       ],
-      "image": null,
-      "images": [],
+      "image": {
+        "src": "/evidence/resume--portforag-test-resume--landing.webp",
+        "file": "resume--portforag-test-resume--landing.webp",
+        "source_path": "src/images/resume--portforag-test-resume--landing.webp",
+        "sha256": "6acf696f5d3abf765af986066c4b24b032d776db5ec8158338314f78048455fb",
+        "alt": "Top of the Resume page (portforag-test.vercel.app/resume.html), rendered from public/resume.html",
+        "width": 1000,
+        "height": 558,
+        "captured_url": "https://portforag-test.vercel.app/resume.html",
+        "status": "captured",
+        "captured": "2026-11-11T15:56:37-07:00"
+      },
+      "images": [
+        {
+          "src": "/evidence/resume--portforag-test-resume--landing.webp",
+          "file": "resume--portforag-test-resume--landing.webp",
+          "source_path": "src/images/resume--portforag-test-resume--landing.webp",
+          "sha256": "6acf696f5d3abf765af986066c4b24b032d776db5ec8158338314f78048455fb",
+          "alt": "Top of the Resume page (portforag-test.vercel.app/resume.html), rendered from public/resume.html",
+          "width": 1000,
+          "height": 558,
+          "captured_url": "https://portforag-test.vercel.app/resume.html",
+          "status": "captured",
+          "captured": "2026-11-11T15:56:37-07:00"
+        }
+      ],
       "resume": {
         "name": "Christopher Kenreigh",
         "title_line": "Lead UX Designer & Design Ops Architect",
@@ -470,7 +515,6 @@
       ],
       "last_checked": null,
       "flags": [
-        "missing: captured image (no resume image source exists)",
         "missing: dates (resume spans several roles)"
       ],
       "manual": {},
@@ -2003,7 +2047,7 @@
     {
       "id": "ape-x-apple-cl007v1-gemini",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "ape-x-apple-CL007v1-gemini",
       "title_source": "evidence-map n (repository name)",
@@ -2255,7 +2299,7 @@
     {
       "id": "ape-x-apple-cl007v1-gemini-002",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "ape-x-apple-CL007v1-gemini-002",
       "title_source": "evidence-map n (repository name)",
@@ -2783,7 +2827,7 @@
     {
       "id": "appprotoneov001",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Appprotoneov001",
       "title_source": "evidence-map n (repository name)",
@@ -3061,7 +3105,7 @@
     {
       "id": "appprotoneov001-rev",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Christopher Kenreigh",
       "title_source": "evidence-map links[].t (live page title)",
@@ -3480,7 +3524,7 @@
     {
       "id": "appprotoneov002-alt",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "Appprotoneov002-alt",
       "title_source": "evidence-map n (repository name)",
@@ -3575,7 +3619,7 @@
     {
       "id": "appprotoneov002-pcric",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Christopher Kenreigh",
       "title_source": "evidence-map links[].t (live page title)",
@@ -3692,7 +3736,7 @@
     {
       "id": "appprotoneov006pnu",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Appprotoneov006pnu",
       "title_source": "evidence-map n (repository name)",
@@ -3803,7 +3847,7 @@
     {
       "id": "appprotoneov034pali",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Christopher Kenreigh",
       "title_source": "evidence-map links[].t (live page title)",
@@ -4048,7 +4092,7 @@
     {
       "id": "ats-x",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "ATS-X",
       "title_source": "evidence-map n (repository name)",
@@ -4914,7 +4958,7 @@
     {
       "id": "backsups",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Leave out",
       "title": "backsups",
       "title_source": "evidence-map n (repository name)",
@@ -5123,7 +5167,7 @@
     {
       "id": "canvas",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "canvas",
       "title_source": "evidence-map n (repository name)",
@@ -5230,7 +5274,7 @@
     {
       "id": "cmspayload",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "CMSPayload",
       "title_source": "evidence-map n (repository name)",
@@ -5330,7 +5374,7 @@
     {
       "id": "cmspayloadtest",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "cmsPayloadtest",
       "title_source": "evidence-map n (repository name)",
@@ -6142,7 +6186,7 @@
     {
       "id": "fixitaibeta",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "FixIt AI — Snap a Photo. Get a Repair Plan.",
       "title_source": "evidence-map links[].t (live page title)",
@@ -7408,7 +7452,7 @@
     {
       "id": "jdapi",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "jdapi",
       "title_source": "evidence-map n (repository name)",
@@ -8483,7 +8527,7 @@
     {
       "id": "payload-website-starter",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Leave out",
       "title": "payload-website-starter",
       "title_source": "evidence-map n (repository name)",
@@ -8576,7 +8620,7 @@
     {
       "id": "payloadcms",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Leave out",
       "title": "payloadcms",
       "title_source": "evidence-map n (repository name)",
@@ -8665,7 +8709,7 @@
     {
       "id": "payloadptest",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Leave out",
       "title": "payloadptest",
       "title_source": "evidence-map n (repository name)",
@@ -8758,7 +8802,7 @@
     {
       "id": "pcms",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "pcms",
       "title_source": "evidence-map n (repository name)",
@@ -9002,7 +9046,7 @@
     {
       "id": "personabehaviorgravitas",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "Personas 101 V1.14 (CK_Behavioral)",
       "title_source": "evidence-map links[].t (live page title)",
@@ -9799,7 +9843,7 @@
     {
       "id": "portfotest",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "Christopher Kenreigh",
       "title_source": "evidence-map links[].t (live page title)",
@@ -10049,7 +10093,7 @@
     {
       "id": "prodportfo",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "ProdPortfo",
       "title_source": "evidence-map n (repository name)",
@@ -10157,7 +10201,7 @@
     {
       "id": "psms-mbl",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Consolidation candidate",
       "title": "psms-mbl",
       "title_source": "evidence-map n (repository name)",
@@ -10538,7 +10582,7 @@
     {
       "id": "revengany",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Leave out",
       "title": "revengany",
       "title_source": "evidence-map n (repository name)",
@@ -10769,7 +10813,7 @@
     {
       "id": "sitetest",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "sitetest",
       "title_source": "evidence-map n (repository name)",
@@ -11402,7 +11446,7 @@
     {
       "id": "uxrnd",
       "kind": "repository",
-      "indexable": true,
+      "indexable": false,
       "recommendation": "Clarify",
       "title": "UXRND",
       "title_source": "evidence-map n (repository name)",

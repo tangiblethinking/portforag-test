@@ -4,6 +4,8 @@ import crypto from "node:crypto";
 export const MAP = "data/source/evidence-map/index.html";
 export const IMG_DIR = "data/source/evidence-map/src/images";
 export const RESUME = "public/resume.html";
+/** Live URL of the supplied resume; its capture (if any) is registered in the images manifest under this URL. */
+export const RESUME_URL = "https://portforag-test.vercel.app/resume.html";
 export const OUT = "data/master.json";
 /** Fields a verified manual correction may set (record.manual); everything else is source-derived. */
 export { MANUAL_FIELDS } from "./master-validate.mjs";
@@ -12,9 +14,10 @@ export const sha = (b) => crypto.createHash("sha256").update(b).digest("hex");
 
 /**
  * Pure master build. Inputs are file contents; imageInfo(file) returns {sha256,width,height} for a capture present
- * in the repo, or null. Returns { doc, usedImages } — the caller writes data/master.json and copies used images.
+ * in the repo, or null. captures: the images manifest entries (src/images/manifest.json); only the resume capture
+ * (url === RESUME_URL) is read from it. Returns { doc, usedImages } — the caller writes data/master.json and copies used images.
  */
-export function buildMaster({ mapHtml, resumeHtml, runtimeProjects, recentItems, prev, imageInfo }) {
+export function buildMaster({ mapHtml, resumeHtml, runtimeProjects, recentItems, prev, imageInfo, captures = [] }) {
 // ---------- evidence map ----------
 const block = mapHtml.match(/<script type="application\/json" id="evidence-data">([\s\S]*?)<\/script>/);
 if (!block) throw new Error("evidence-data block not found in " + MAP);
@@ -121,6 +124,17 @@ for (const r of ev.rows) {
 }
 
 // ---------- resume record ----------
+// Resume image: a capture of the rendered resume page, registered in the images manifest (not part of the evidence map).
+const resumeCap = captures.find((c) => c.url === RESUME_URL) || null;
+let resumeImage = null;
+if (resumeCap) {
+  const file = String(resumeCap.file).split("/").pop();
+  const info = imageInfo(file);
+  if (!info) throw new Error(`resume capture ${file} not in repository`);
+  if (info.width !== resumeCap.width || info.height !== resumeCap.height) throw new Error(`size mismatch ${file}`);
+  usedImages.add(file);
+  resumeImage = { src: `/evidence/${file}`, file, source_path: `src/images/${file}`, sha256: info.sha256, alt: resumeCap.alt, width: info.width, height: info.height, captured_url: RESUME_URL, status: "captured", captured: resumeCap.captured_at || null };
+}
 const resumeText = [
   [name, titleLine].filter(Boolean).join(" — "),
   `Summary: ${summaryText}`,
@@ -155,12 +169,12 @@ records.push({
   repository: null,
   deployment: { status: null, live_url: null, links: [], vercel_projects: [], router_path: null, old_homepage: null },
   supporting_evidence: [RESUME],
-  image: null,
-  images: [],
+  image: resumeImage,
+  images: resumeImage ? [resumeImage] : [],
   resume: { name, title_line: titleLine, summary: summaryText, roles, skills_paragraphs: skillParas, education, links: contactLinks, html: "/resume.html", text: resumeText },
   sources: [{ type: "resume-html", path: RESUME, sha256: sha(resumeHtml) }],
   last_checked: null,
-  flags: ["missing: captured image (no resume image source exists)", "missing: dates (resume spans several roles)"],
+  flags: [...(resumeImage ? [] : ["missing: captured image (no resume image source exists)"]), "missing: dates (resume spans several roles)"],
   manual: {},
 });
 
@@ -197,8 +211,17 @@ for (const p of runtimeProjects) {
   if (id) aliases.runtime_ids[p.id] = id;
   else unaccounted.push({ source: "projects.json", runtime_id: p.id, repo: p.repo || null, reason: owner && owner !== "tangiblethinking" ? `repository owner ${owner} is outside the evidence map (tangiblethinking only); not in the master, so not searchable and not shown as a card` : "no evidence-map record; not searchable and not shown as a card" });
 }
-// Recent Work URL -> record: exact evidence-map link or capture URL only. Anything else is reported as unsupported.
+// Recent Work URL -> record: exact evidence-map link or capture URL only, or an explicit named link set in
+// data/recent-work.json (item.link = { record_id, image, basis }); the linked image must be one of that record's own
+// captures. Anything else is reported as unsupported.
 const recent = recentItems.map((it) => {
+  if (it.link) {
+    const rec = records.find((r) => r.id === it.link.record_id);
+    if (!rec) throw new Error(`recent ${it.id}: explicit link to unknown record ${it.link.record_id}`);
+    if (it.link.image && !rec.images.some((im) => im.file === it.link.image)) throw new Error(`recent ${it.id}: image ${it.link.image} is not a capture of ${rec.id}`);
+    aliases.runtime_ids[`recent-${it.id}`] = rec.id;
+    return { recent_id: it.id, url: it.url, record_id: rec.id, match: "explicit link", ...(it.link.image ? { image: it.link.image } : {}), basis: it.link.basis || null };
+  }
   const id = byUrl.get(it.url.replace(/\/$/, "")) || null;
   const basis = id ? "exact URL" : null;
   if (id) aliases.runtime_ids[`recent-${it.id}`] = id;

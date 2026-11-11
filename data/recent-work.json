@@ -13,7 +13,12 @@
       "path": "/jobs",
       "url": "https://ats-x2-prod-main.vercel.app/jobs",
       "title": "ATS Jobs",
-      "blurb": "Job search and ATS alignment prototype."
+      "blurb": "Job search and ATS alignment prototype.",
+      "link": {
+        "record_id": "ats-x2-prod-main",
+        "image": "ats-x2-prod-main--uxapex-jobs--landing.webp",
+        "basis": "explicit named link (user-approved, Nov 11, 2026): router https://www.uxapex.com/jobs/ serves ats-x2-prod-main; image captured from that router URL"
+      }
     },
     {
       "id": "cart",
@@ -48,7 +53,12 @@
       "path": "/laws",
       "url": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
       "title": "UX Legal",
-      "blurb": "Legal UX patterns and compliance-minded design."
+      "blurb": "Legal UX patterns and compliance-minded design.",
+      "link": {
+        "record_id": "html-test",
+        "image": "html-test--uxapex-laws--landing.webp",
+        "basis": "explicit named link (user-approved, Nov 11, 2026): router https://www.uxapex.com/laws serves the UX Legal page of html-test; image captured from that router URL"
+      }
     },
     {
       "id": "ape",

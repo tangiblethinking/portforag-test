@@ -949,6 +949,19 @@
    "bytes": 16664,
    "captured_at": "2026-11-09T11:31:58-07:00",
    "time_kind": "processed"
+  },
+  {
+   "url": "https://portforag-test.vercel.app/resume.html",
+   "aliases": [],
+   "repo": null,
+   "file": "src/images/resume--portforag-test-resume--landing.webp",
+   "alt": "Top of the Resume page (portforag-test.vercel.app/resume.html), rendered from public/resume.html",
+   "title": "portforag-test.vercel.app/resume.html — Resume",
+   "width": 1000,
+   "height": 558,
+   "bytes": 31504,
+   "captured_at": "2026-11-11T15:56:37-07:00",
+   "time_kind": "processed"
   }
  ]
 }

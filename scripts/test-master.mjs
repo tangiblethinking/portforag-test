@@ -41,7 +41,14 @@ const repos = M.records.filter((r) => r.kind === "repository");
 ok(repos.length === 86 && ev.rows.length === 86 && M.records.length === 87, "86 repository records + resume");
 ok(new Set(M.records.map((r) => r.id)).size === M.records.length, "stable ids are unique");
 ok(eq(repos.map((r) => r.id).sort(), ev.rows.map((r) => r.id).sort()), "ids are the evidence-map stable ids");
-ok(M.records.every((r) => r.indexable === true), "default indexable true (no prior selections)");
+// Bug 1 (Nov 11, 2026): exactly these 26 records are switched off (no image source: login wall, functional error, or
+// deleted/missing deployment); every other record, including the resume, stays enabled.
+const DISABLED = ["fixitaibeta", "portfotest", "pcms", "psms-mbl", "sitetest", "appprotoneov001-rev", "appprotoneov002-pcric", "personabehaviorgravitas", "appprotoneov034pali", "prodportfo", "ape-x-apple-cl007v1-gemini", "ape-x-apple-cl007v1-gemini-002", "appprotoneov006pnu", "cmspayloadtest", "payloadptest", "payload-website-starter", "appprotoneov002-alt", "backsups", "canvas", "cmspayload", "jdapi", "revengany", "payloadcms", "ats-x", "uxrnd", "appprotoneov001"];
+ok(DISABLED.length === 26 && DISABLED.every((id) => R.has(id)), "26 disabled ids exist in the master");
+ok(eq(M.records.filter((r) => !r.indexable).map((r) => r.id).sort(), [...DISABLED].sort()), "exactly the 26 Bug 1 records are indexable:false");
+ok(M.counts.indexable === 61 && M.records.filter((r) => r.indexable).length === 61, "counts.indexable is 61");
+ok(eq(M.refresh.carried_over, [...DISABLED].sort()), "disabled ids recorded in refresh.carried_over");
+ok(M.records.filter((r) => DISABLED.includes(r.id)).every((r) => eq(r.manual, {})), "disabled records: no other field changes (no manual corrections)");
 for (const row of ev.rows) {
   const r = R.get(row.id);
   const f = [
@@ -70,7 +77,18 @@ for (const r of repos) for (const im of r.images) {
   ok(thumbs[im.captured_url]?.repo === r.repository.name && thumbs[im.captured_url].status === "captured", `${r.id}: image belongs to this repo`);
 }
 const captured = Object.values(thumbs).filter((t) => t.status === "captured" && ev.rows.some((r) => r.n === t.repo));
-ok(imgCount === captured.length && fs.readdirSync("public/evidence").length === new Set(captured.map((t) => t.final.split("/").pop())).size, `all ${captured.length} captured images of existing repos mapped; no extra files`);
+// resume image: capture of the rendered public/resume.html, registered in src/images/manifest.json
+const RESUME_IMG = "resume--portforag-test-resume--landing.webp";
+const manifest = JSON.parse(read0("data/source/evidence-map/src/images/manifest.json")).images;
+const resCap = manifest.find((c) => c.url === "https://portforag-test.vercel.app/resume.html");
+{
+  const im = res.image, pub = fs.readFileSync("public/evidence/" + RESUME_IMG), src = fs.readFileSync("data/source/evidence-map/src/images/" + RESUME_IMG);
+  ok(resCap && resCap.file === "src/images/" + RESUME_IMG, "resume capture registered in the images manifest");
+  ok(im && im.src === "/evidence/" + RESUME_IMG && im.file === RESUME_IMG && im.source_path === "src/images/" + RESUME_IMG && im.captured_url === "https://portforag-test.vercel.app/resume.html" && im.status === "captured", "resume record image resolves to the registered capture");
+  ok(sha(pub) === sha(src) && im.sha256 === sha(src) && pub.subarray(8, 12).toString() === "WEBP" && im.width === 1000 && im.height === 558, "resume image file: webp 1000x558, public copy = source");
+  ok(eq(res.images, [im]) && !res.flags.some((f) => /captured image/.test(f)) && res.title === "Resume", "resume: one image, missing-image flag cleared, title unchanged");
+}
+ok(imgCount === captured.length && fs.readdirSync("public/evidence").length === new Set(captured.map((t) => t.final.split("/").pop())).size + 1, `all ${captured.length} captured images of existing repos mapped + resume capture; no extra files`);
 ok(R.get("virtuallabs").image.src === "/evidence/virtuallabs--virtual-labs-mu--landing.webp", "virtuallabs image mapping");
 ok(R.get("virtuallabs").dates?.display === "2014 – 2016" && R.get("dls").dates === null, "dates only where evidence states them");
 ok(repos.every((r) => Array.isArray(r.flags)) && repos.filter((r) => r.flags.some((f) => f.startsWith("conflict:"))).length >= 1, "missing/conflict flags reported");
@@ -85,8 +103,16 @@ for (const p of runtime) {
 ok(M.unaccounted.filter((u) => u.source === "projects.json").length === 7 && M.unaccounted.every((u) => u.reason), "7 PlexusworldwideUX runtime projects accounted as non-search");
 const rw = JSON.parse(fs.readFileSync("data/recent-work.json", "utf8")).items;
 ok(rw.filter((it) => M.recent_work.some((x) => x.recent_id === it.id && x.record_id && R.has(x.record_id) && x.match === "exact URL")).length === 13, "13 Recent Work URLs map by exact evidence URL");
-for (const it of rw) { const x = M.recent_work.find((y) => y.recent_id === it.id); if (x.record_id) ok(R.get(x.record_id).deployment.links.some((l) => l.url === it.url.replace(/\/$/, "")) || Object.entries(thumbs).some(([u, t]) => (u === it.url || (t.aliases || []).includes(it.url)) && t.repo === R.get(x.record_id).repository.name), `recent ${it.id}: exact alias verified`); }
-ok(["recent-jobs", "recent-laws"].every((id) => M.unaccounted.some((u) => u.runtime_id === id && /unsupported alias/.test(u.reason))) && M.recent_work.filter((x) => !x.record_id).length === 2, "non-exact Recent Work URLs (/jobs, branch URL) flagged unsupported, not mapped");
+for (const it of rw) { const x = M.recent_work.find((y) => y.recent_id === it.id); if (x.record_id && x.match === "exact URL") ok(R.get(x.record_id).deployment.links.some((l) => l.url === it.url.replace(/\/$/, "")) || Object.entries(thumbs).some(([u, t]) => (u === it.url || (t.aliases || []).includes(it.url)) && t.repo === R.get(x.record_id).repository.name), `recent ${it.id}: exact alias verified`); }
+// explicit named links (not same-site matching): jobs -> ats-x2-prod-main, laws -> html-test, each with its router capture
+const EXPLICIT = { jobs: ["ats-x2-prod-main", "ats-x2-prod-main--uxapex-jobs--landing.webp", "https://www.uxapex.com/jobs/"], laws: ["html-test", "html-test--uxapex-laws--landing.webp", "https://www.uxapex.com/laws"] };
+ok(eq(M.recent_work.filter((x) => x.match === "explicit link").map((x) => x.recent_id).sort(), Object.keys(EXPLICIT)) && M.recent_work.every((x) => x.record_id), "only jobs + laws use explicit links; every Recent Work item is mapped");
+for (const [rid, [rec, file, url]] of Object.entries(EXPLICIT)) {
+  const x = M.recent_work.find((y) => y.recent_id === rid), im = R.get(rec).images.find((i) => i.file === file);
+  ok(x.record_id === rec && x.image === file && M.aliases.runtime_ids[`recent-${rid}`] === rec, `recent ${rid}: explicit link to ${rec}`);
+  ok(im && im.captured_url === url && thumbs[url]?.repo === R.get(rec).repository.name && fs.existsSync("public" + im.src), `recent ${rid}: named image is ${rec}'s own capture of ${url}`);
+}
+ok(!M.unaccounted.some((u) => u.source === "recent-work.json"), "no Recent Work items left unaccounted");
 ok(validateMaster(M).length === 0, "master passes structural validation");
 ok(!/build-master|build:master/.test(JSON.parse(read0("package.json")).scripts.build), "npm run build never regenerates (overwrites) data/master.json");
 
@@ -109,13 +135,19 @@ ok(!/build-master|build:master/.test(JSON.parse(read0("package.json")).scripts.b
   ok(v2.indexable === false && v2.description === "Verified correction text." && v2.manual.description === "Verified correction text." && out.refresh.carried_over.includes("virtuallabs"), "source refresh keeps toggle + manual correction");
   ok(v2.source_values.description === R.get("virtuallabs").description && validateMaster(out).length === 0, "source value kept beside the correction; result validates");
   // runtime: a switched-off record disappears from Recent Work and chat cards (no list-only fallback)
-  const cards = JSON.parse(execFileSync("node", ["--no-warnings", "-e", `import(${JSON.stringify(path.resolve("lib/master.ts"))}).then(m => { const rw = JSON.parse(require("fs").readFileSync(${JSON.stringify(path.resolve("data/recent-work.json"))}, "utf8")).items; console.log(JSON.stringify({ recent: m.recentCards(rw).map(c => c.id), enabled: m.enabledCards().map(c => c.id) })); })`], { cwd: tmp, encoding: "utf8" }));
+  const cards = JSON.parse(execFileSync("node", ["--no-warnings", "-e", `import(${JSON.stringify(path.resolve("lib/master.ts"))}).then(m => { const rw = JSON.parse(require("fs").readFileSync(${JSON.stringify(path.resolve("data/recent-work.json"))}, "utf8")).items; import(${JSON.stringify(path.resolve("lib/browse-cards.ts"))}).then(b => { const rc = m.recentCards(rw); console.log(JSON.stringify({ recent: rc.map(c => c.id), recentImg: Object.fromEntries(rc.map(c => [c.id, c.image?.src ?? null])), enabled: m.enabledCards().map(c => c.id), resume: m.resumeCard(), browse: b.getBrowseCards(m.resumeCard(), rc, "X") })); }); })`], { cwd: tmp, encoding: "utf8" }));
   ok(!cards.recent.includes("recent-vlabs") && cards.recent.length === rw.length - 1, "disabled record removed from Recent Work (no fallback card)");
-  ok(cards.recent.includes("recent-jobs") && cards.recent.includes("recent-laws"), "unsupported-alias items stay as list-only items");
-  ok(!cards.enabled.includes("virtuallabs") && cards.enabled.length === 86, "disabled record removed from chat cards");
+  ok(cards.recentImg["recent-jobs"] === "/evidence/ats-x2-prod-main--uxapex-jobs--landing.webp" && cards.recentImg["recent-laws"] === "/evidence/html-test--uxapex-laws--landing.webp", "Recent Work jobs/laws cards show the named router captures");
+  ok(!cards.enabled.includes("virtuallabs") && cards.enabled.length === 60, "disabled record removed from chat cards");
+  ok(DISABLED.every((id) => !cards.enabled.includes(id)), "the 26 disabled records are not chat cards");
+  ok(cards.resume.image?.src === "/evidence/" + RESUME_IMG && cards.enabled.includes("resume"), "resume card (Browse + chat) carries the resume image");
+  const [b0, b1, b2] = cards.browse;
+  ok(cards.browse.length === 3 && b0.id === "resume" && b0.image?.src === "/evidence/" + RESUME_IMG, "Browse: resume card shows the resume image");
+  ok(b1.id === "recent" && b1.image?.src === "/evidence/interview--interview-eight-pi--landing.webp", "Browse: Recent Work hub unchanged (still the Interview image)");
+  ok(b2.id === "about" && b2.image === null, "Browse: About unchanged (no image)");
   m2.records.find((r) => r.id === "virtuallabs").manual = { bogus: 1 };
   ok(validateMaster(m2).some((e) => /not an editable field/.test(e)), "validation rejects non-editable manual fields");
-  ok(out.records.filter((r) => r.id !== "virtuallabs").every((r) => r.indexable), "refresh leaves other toggles default");
+  ok(out.records.filter((r) => r.id !== "virtuallabs").every((r) => r.indexable === R.get(r.id).indexable), "refresh leaves other toggles as they were");
   fs.rmSync(tmp, { recursive: true, force: true });
 }
 
@@ -124,7 +156,8 @@ const chunks = buildChunks(M.records);
 const employers = [...new Set(M.records.flatMap((r) => [r.employer?.status === "named" ? r.employer.employer : null, ...(r.resume?.roles || []).map((x) => x.company)]).filter(Boolean))];
 const q = (s, recs = chunks) => search(recs, s, { employerNames: employers });
 ok(chunks.filter((c) => R.get(c.record_id)?.employer?.status && !["named", "resume"].includes(R.get(c.record_id).employer.status)).every((c) => /do not attribute this project to any employer/.test(c.text)), "unconfirmed-employer chunks say not to attribute an employer");
-ok(chunks.length === 86 + 3 + res.resume.roles.length && chunks.filter((c) => c.record_id !== "resume").every((c) => c.text.includes(R.get(c.record_id).description || "")), "one untruncated chunk per record + resume sections");
+ok(DISABLED.every((id) => !chunks.some((c) => c.record_id === id)) && !q("FixIt AI beta").hits.some((h) => DISABLED.includes(h.chunk.record_id)), "the 26 disabled records are excluded from retrieval");
+ok(chunks.length === 60 + 3 + res.resume.roles.length && chunks.filter((c) => c.record_id !== "resume").every((c) => c.text.includes(R.get(c.record_id).description || "")), "one untruncated chunk per record + resume sections");
 {
   const r = q("What industries has he designed for?");
   const ids = r.hits.map((h) => h.chunk.id), recs = new Set(r.hits.map((h) => h.chunk.record_id));

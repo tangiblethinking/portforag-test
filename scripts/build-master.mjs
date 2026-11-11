@@ -1,7 +1,8 @@
 // Builds data/master.json: the ONE canonical master collection for retrieval and cards (core: scripts/master-core.mjs).
 // Deterministic, no network, no API keys. Repository inputs only:
 //   data/source/evidence-map/index.html        evidence map (86 structured repo records, JSON block id="evidence-data")
-//   data/source/evidence-map/src/images/*.webp captured landing images referenced by the map
+//   data/source/evidence-map/src/images/*.webp captured landing images referenced by the map, plus the resume
+//                                               capture registered in src/images/manifest.json (url = resume URL)
 //   public/resume.html                          supplied resume, served unchanged; its text is extracted here
 //   projects.json, data/recent-work.json        existing runtime ids / Recent Work URLs (exact alias map + accounting)
 // Source refresh: replace the inputs above and re-run. For every record already in data/master.json, `indexable`
@@ -32,6 +33,7 @@ const { doc, usedImages } = buildMaster({
   recentItems: JSON.parse(fs.readFileSync("data/recent-work.json", "utf8")).items,
   prev: fs.existsSync(OUT) ? JSON.parse(fs.readFileSync(OUT, "utf8")) : null,
   imageInfo,
+  captures: JSON.parse(fs.readFileSync(`${IMG_DIR}/manifest.json`, "utf8")).images,
 });
 fs.writeFileSync(OUT, JSON.stringify(doc, null, 2) + "\n");
 fs.mkdirSync("public/evidence", { recursive: true });
