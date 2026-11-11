@@ -217,7 +217,7 @@ const doc = {
     resume: { path: RESUME, sha256: sha(resumeHtml) },
   },
   counts: { records: records.length, repository: records.filter((r) => r.kind === "repository").length, resume: 1, images: usedImages.size, indexable: records.filter((r) => r.indexable).length },
-  refresh: { carried_over: carried, removed_since_last_build: removed },
+  refresh: { carried_over: [...carried].sort(), removed_since_last_build: removed },
   aliases,
   recent_work: recent,
   unaccounted,
