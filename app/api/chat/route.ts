@@ -1,4 +1,6 @@
-import { embedQuery, search, answer, index } from "@/lib/rag";
+import { retrieve, answer } from "@/lib/rag";
+import { pickCardIds } from "@/lib/retrieval";
+import { enabledIds, resolveId } from "@/lib/master";
 import { NoKeyError } from "@/lib/keys";
 import { FOLLOWUPS, LOADING, intent } from "@/lib/config";
 export const runtime = "nodejs";
@@ -14,14 +16,14 @@ export async function POST(req: Request) {
   const history = Array.isArray(body.history) ? body.history.filter((h: any) => typeof h?.text === "string").slice(-6) : [];
   const it = intent(q);
   try {
-    const found = search(await embedQuery(q));
-    let text = await answer(q, history, found);
+    const found = await retrieve(q);
+    let text = await answer(q, history, found.hits);
     const m = text.match(/IDS:\s*(.*)\s*$/i);
     text = text.replace(/IDS:.*$/is, "").trim();
-    const known = new Set(index().projects.map(p => p.id));
-    let ids = (m?.[1] || "").split(",").map(s => s.trim()).filter(id => known.has(id));
-    if (!ids.length) ids = [...new Set(found.filter(f => f.s > 0.6).map(f => f.c.project_id))].slice(0, 3);
-    return Response.json({ answer: text, project_ids: [...new Set(ids)].slice(0, 4), sources: [...new Set(found.map(f => f.c.project_id))], suggestions: FOLLOWUPS[it] || FOLLOWUPS.default, loading: LOADING[it] });
+    // Cited ids are resolved to canonical master ids and kept only if enabled AND in this answer's context.
+    const cited = (m?.[1] || "").split(",").map(s => resolveId(s.trim())).filter((x): x is string => !!x);
+    const ids = pickCardIds(cited, found, enabledIds(), { includeResume: it === "resume" });
+    return Response.json({ answer: text, project_ids: ids, sources: [...new Set(found.hits.map(h => h.chunk.record_id))], retrieval: found.mode, suggestions: FOLLOWUPS[it] || FOLLOWUPS.default, loading: LOADING[it] });
   } catch (e) {
     if (e instanceof NoKeyError) return Response.json({ error: "all_keys_busy", message: "I’m catching my breath — the AI is busy right now. Try a suggestion below or open the resume." }, { status: 503 });
     console.error(e);

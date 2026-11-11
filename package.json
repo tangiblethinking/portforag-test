@@ -5,10 +5,10 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "index": "node scripts/build-index.mjs",
-    "qa": "node scripts/qa.mjs",
-    "check:projects": "node scripts/check-project-display.mjs",
-    "build:project-display": "node scripts/build-project-display.mjs"
+    "index": "node --no-warnings scripts/build-index.mjs",
+    "build:master": "node scripts/build-master.mjs",
+    "test": "node --no-warnings scripts/test-master.mjs",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.2",

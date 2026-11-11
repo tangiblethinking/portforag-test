@@ -12,6 +12,7 @@ type Frame =
   | { kind: "recent"; shown: number };
 
 const PAGE = 3;
+const RESUME_HTML = "/resume.html";
 
 const CHIP_COUNT = 6;
 
@@ -61,35 +62,11 @@ function guess(q: string) {
   return "Searching the projects…";
 }
 
-function mdLite(src: string) {
-  return src
-    .split(/\n\n+/)
-    .map((block) => {
-      const lines = block.split("\n");
-      if (lines[0].startsWith("# ")) return `<h1 class="text-2xl font-semibold mb-3">${esc(lines[0].slice(2))}</h1>` + lines.slice(1).map(lineHtml).join("");
-      if (lines[0].startsWith("## ")) return `<h2 class="text-lg font-semibold mt-6 mb-2">${esc(lines[0].slice(3))}</h2>` + lines.slice(1).map(lineHtml).join("");
-      return `<p class="mb-3 text-neutral-700 dark:text-neutral-300 leading-relaxed">${lines.map(inline).join("<br/>")}</p>`;
-    })
-    .join("");
-}
-function lineHtml(l: string) {
-  if (l.startsWith("- ")) return `<li class="ml-5 list-disc text-neutral-700 dark:text-neutral-300">${inline(l.slice(2))}</li>`;
-  return inline(l);
-}
-function inline(s: string) {
-  return esc(s).replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-}
-function esc(s: string) {
-  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-}
-
 export default function Landing({
-  resumeMarkdown,
   recent,
   projects,
   browse,
 }: {
-  resumeMarkdown: string;
   recent: ProjectCardData[];
   projects: ProjectCardData[];
   browse: ProjectCardData[];
@@ -133,8 +110,6 @@ export default function Landing({
     const t = setInterval(() => setLine(SCIFI[Math.floor(Math.random() * SCIFI.length)]), 2500);
     return () => clearInterval(t);
   }, [busy]);
-
-  const resumeHtml = useMemo(() => mdLite(resumeMarkdown), [resumeMarkdown]);
 
   const toggle = () => {
     const d = !dark;
@@ -349,10 +324,16 @@ export default function Landing({
         title={top?.kind === "resume" ? "Resume" : top?.kind === "about" ? "About" : top?.kind === "recent" ? "Recent Work" : ""}
         onClose={pop}
       >
+        {top?.kind === "resume" ? (
+          // Supplied resume, served unchanged from public/resume.html; isolated so its styles stay its own.
+          <iframe
+            src={RESUME_HTML}
+            title="Resume"
+            sandbox="allow-popups allow-popups-to-escape-sandbox"
+            className="min-h-0 w-full flex-1 border-0 bg-white"
+          />
+        ) : (
         <div className="min-h-0 flex-1 overflow-auto">
-          {top?.kind === "resume" && (
-            <div className="prose-neutral mx-auto max-w-3xl p-6" dangerouslySetInnerHTML={{ __html: resumeHtml }} />
-          )}
           {top?.kind === "about" && (
             <div className="mx-auto max-w-2xl space-y-4 p-6">
               <h2 className="text-2xl font-semibold">{ABOUT.title}</h2>
@@ -391,6 +372,7 @@ export default function Landing({
             </div>
           )}
         </div>
+        )}
       </SheetShell>
 
       <ProjectSheet card={sheet} onClose={() => setSheet(null)} />
