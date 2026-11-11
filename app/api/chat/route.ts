@@ -1,6 +1,6 @@
 import { retrieve, answer } from "@/lib/rag";
-import { pickCardIds } from "@/lib/retrieval";
-import { enabledIds, resolveId } from "@/lib/master";
+import { mentionedIds, pickCardIds } from "@/lib/retrieval";
+import { enabledIds, getMaster, resolveId } from "@/lib/master";
 import { NoKeyError } from "@/lib/keys";
 import { FOLLOWUPS, LOADING, intent } from "@/lib/config";
 export const runtime = "nodejs";
@@ -22,7 +22,8 @@ export async function POST(req: Request) {
     text = text.replace(/IDS:.*$/is, "").trim();
     // Cited ids are resolved to canonical master ids and kept only if enabled AND in this answer's context.
     const cited = (m?.[1] || "").split(",").map(s => resolveId(s.trim())).filter((x): x is string => !!x);
-    const ids = pickCardIds(cited, found, enabledIds(), { includeResume: it === "resume" });
+    const titles = new Map(getMaster().records.map((r) => [r.id, r.title]));
+    const ids = pickCardIds(cited, found, enabledIds(), { includeResume: it === "resume", mentioned: mentionedIds(text, found, titles), titles });
     return Response.json({ answer: text, project_ids: ids, sources: [...new Set(found.hits.map(h => h.chunk.record_id))], retrieval: found.mode, suggestions: FOLLOWUPS[it] || FOLLOWUPS.default, loading: LOADING[it] });
   } catch (e) {
     if (e instanceof NoKeyError) return Response.json({ error: "all_keys_busy", message: "I’m catching my breath — the AI is busy right now. Try a suggestion below or open the resume." }, { status: 503 });

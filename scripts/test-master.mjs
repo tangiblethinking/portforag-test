@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { buildChunks, chunksVersion, search, pickCardIds, detectIntent, cardSupport } from "../lib/retrieval.ts";
+import { buildChunks, chunksVersion, search, pickCardIds, detectIntent, cardSupport, mentionedIds } from "../lib/retrieval.ts";
 import { validateMaster } from "./master-validate.mjs";
 
 let pass = 0, fail = 0;
@@ -134,12 +134,17 @@ ok(chunks.length === 86 + 3 + res.resume.roles.length && chunks.filter((c) => c.
   const ctx = r.hits.map((h) => h.chunk.text).join(" ");
   ok(/e-commerce/i.test(ctx) && /B2B/.test(ctx) && /industrial/i.test(ctx) && /EdTech/.test(ctx), "industries: context covers e-commerce, B2B, industrial, EdTech");
   const all = new Set(M.records.map((x) => x.id));
-  const cards = pickCardIds([], r, all);
-  ok(cards.length >= 1 && cards.length <= 4 && !cards.includes("resume"), "industries: fallback cards are relevant projects, bounded");
-  ok(cards.every((id) => R.get(id).employer.status !== "portfolio" && cardSupport(r, id).length > 0), "industries: every card has its own substantive evidence (no resume restatements)");
-  const cited = pickCardIds(["resume", "virtuallabs", "html-test", "appprotoneov006pnu"], r, all);
+  const titles = new Map(M.records.map((x) => [x.id, x.title]));
+  ok(pickCardIds([], r, all, { titles }).length === 0, "industries: no citations -> no score-based fallback cards");
+  // QA answer text (parent native QA): names Live Metallurgy and Cart/Checkout; sitetest was shown as an unrelated card.
+  const qaText = "He has designed for e-commerce (Cart and Checkout Refactor), industrial operations (the Live Metallurgy Dashboard) and EdTech (Odysseyware Virtual Science Labs).";
+  const mentioned = mentionedIds(qaText, r, titles);
+  const cards = pickCardIds(["resume", "appprotoneov006pnu"], r, all, { mentioned, titles });
+  ok(cards.includes("virtuallabs") && (cards.includes("moderncheckout") || cards.includes("appprotocartonovo")) && !cards.includes("sitetest") && !cards.includes("appprotoneov006pnu"), "industries: cards = named Cart/Checkout + Virtual Labs; portfolio-site Live Metallurgy source and unrelated sitetest absent");
+  ok(!(cards.includes("moderncheckout") && cards.includes("appprotocartonovo")), "duplicate Cart and Checkout titles collapse to one card");
+  ok(cards.every((id) => id === "resume" || (R.get(id).employer.status !== "portfolio" && cardSupport(r, id).length > 0)), "industries: every card has its own substantive evidence");
+  const cited = pickCardIds(["resume", "virtuallabs", "html-test", "appprotoneov006pnu"], r, all, { titles });
   ok(!cited.includes("appprotoneov006pnu") && cited.includes("virtuallabs") && cited.includes("resume"), "cited portfolio-site record rejected; supported citations kept");
-  ok(cited.every((id) => id === "resume" || cardSupport(r, id).length > 0), "cited cards all supported");
   console.log("  industries cards:", cards.join(", "), "| cited kept:", cited.join(", "));
 }
 {
@@ -157,6 +162,15 @@ ok(chunks.length === 86 + 3 + res.resume.roles.length && chunks.filter((c) => c.
 {
   const r = q("Can he build simulations?");
   ok(r.intent === "capabilities" && r.records.slice(0, 5).some((x) => R.get(x.id)?.functional_keywords?.some((k) => k.term === "Simulation")), "capabilities: functional keyword Simulation records rank");
+}
+{
+  const titles = new Map(M.records.map((x) => [x.id, x.title]));
+  const all = new Set(M.records.map((x) => x.id));
+  const r = q("What did he do at Glynlyon?");
+  const text = "At Glynlyon Inc he was a Senior UX Designer (02/2014 – 04/2019); the Odysseyware Virtual Science Labs case study covers 2014 – 2016.";
+  const cards = pickCardIds(["resume", "virtuallabs", "dls", "infoarchdesign"], r, all, { mentioned: mentionedIds(text, r, titles), titles });
+  ok(cards.includes("virtuallabs") && !cards.includes("dls") && !cards.includes("infoarchdesign"), "Glynlyon: Virtual Labs card kept (named employer evidence); unrelated DLS / Incentives IA dropped");
+  ok(R.get("virtuallabs").image.src.includes("virtuallabs--virtual-labs-mu"), "Glynlyon: Virtual Labs card uses its own capture");
 }
 for (const [s, want] of [["Tell me about the Freeport dashboards", "resume"], ["Odysseyware virtual science labs", "virtuallabs"], ["Japan expansion case study", "japan-case-study"], ["information architecture incentives", "infoarchdesign"], ["design language system", "dls"], ["Pull up the resume", "resume"]])
   ok(q(s).records.slice(0, 3).some((x) => x.id === want), `"${s}" -> ${want} in top 3`);

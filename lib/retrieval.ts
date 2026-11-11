@@ -26,7 +26,7 @@ export type MasterRecordLite = {
   deployment: { live_url: string | null; links: { url: string; title: string | null }[] };
   resume?: { name: string | null; title_line: string | null; summary: string; roles: MasterRole[]; skills_paragraphs: string[]; education: string };
 };
-/** `evidence`: the record's own substantive fields (description, keywords, functional keywords, skills) — the text a
+/** `evidence`: the record's own substantive fields (named employer, description, keywords, functional keywords, skills) — the text a
  * card must match on its own; resume restatements in experience/why/note text do not qualify a card. */
 export type Chunk = { id: string; record_id: string; part: string; text: string; group: string; evidence: string };
 export type Hit = { chunk: Chunk; score: number };
@@ -82,7 +82,8 @@ export function buildChunks(records: MasterRecordLite[]): Chunk[] {
       r.note ? `Note: ${r.note}` : "",
       r.deployment.links.length ? `Deployments: ${r.deployment.links.map((l) => `${l.url}${l.title ? ` (${l.title})` : ""}`).join("; ")}.` : "",
     ];
-    const evidence = [r.description || "", r.keywords.join(", "), r.functional_keywords.map((k) => k.term).join(", "), r.skills.join(", ")].join("\n");
+    const named = r.employer?.status === "named" && r.employer.employer ? r.employer.employer : "";
+    const evidence = [named, r.description || "", r.keywords.join(", "), r.functional_keywords.map((k) => k.term).join(", "), r.skills.join(", ")].join("\n");
     out.push({ id: r.id, record_id: r.id, group: r.employer?.status || "unknown", part: "record", text: lines.filter(Boolean).join("\n"), evidence });
   }
   return out;
@@ -183,13 +184,27 @@ export function cardSupport(result: SearchResult, recordId: string): string[] {
   return result.terms.filter((t) => ev.has(t));
 }
 
+/** Titles (or their distinctive part after ":" / "—", 3+ words) of in-context records that the answer text names. */
+export function mentionedIds(answer: string, result: SearchResult, titles: Map<string, string>): string[] {
+  const a = answer.toLowerCase();
+  const out: string[] = [];
+  for (const id of new Set(result.hits.map((h) => h.chunk.record_id))) {
+    const t = (titles.get(id) || "").toLowerCase();
+    if (!t || id === "resume") continue;
+    const tail = t.split(/\s*[:—|]\s*/).filter((x) => x.split(/\s+/).length >= 3);
+    if (a.includes(t) || tail.some((x) => a.includes(x))) out.push(id);
+  }
+  return out;
+}
+
 /**
- * Card ids for an answer. A project card must be enabled, in this answer's context, not a portfolio-site record (those
- * restate the resume), and its own substantive evidence must contain a specific query term. The model's cited ids
- * are used first (still subject to these checks); otherwise the best-scoring supported projects. No forced count.
+ * Card ids for an answer: only records the answer actually cites (IDS line) or names by title. Each must be enabled,
+ * in this answer's context, not a portfolio-site record (those restate the resume), and its own evidence (named
+ * employer, description, keywords, skills) must contain a specific query term. No score-based fallback: an answer
+ * that cites no supported project shows no project cards. Duplicate titles collapse to the first.
  */
-export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; ratio?: number; includeResume?: boolean } = {}): string[] {
-  const max = opts.max ?? 4, ratio = opts.ratio ?? 0.55;
+export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; includeResume?: boolean; mentioned?: string[]; titles?: Map<string, string> } = {}): string[] {
+  const max = opts.max ?? 4;
   const ctx = new Map<string, Chunk>();
   for (const h of result.hits) if (!ctx.has(h.chunk.record_id)) ctx.set(h.chunk.record_id, h.chunk);
   const supported = (id: string) => {
@@ -198,13 +213,8 @@ export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<
     if (id === "resume") return true;
     return c.group !== "portfolio" && cardSupport(result, id).length > 0;
   };
-  let picked = [...new Set(cited)].filter(supported);
-  if (!picked.some((id) => id !== "resume")) {
-    const projects = result.records.filter((r) => r.id !== "resume" && supported(r.id));
-    const top = projects[0]?.score || 0;
-    const extra = top > 0 ? projects.filter((r) => r.score >= top * ratio).map((r) => r.id) : [];
-    picked = [...picked, ...extra];
-  }
+  const picked = [...new Set([...cited, ...(opts.mentioned || [])])].filter(supported);
   if (opts.includeResume && supported("resume") && !picked.includes("resume")) picked.unshift("resume");
-  return [...new Set(picked)].slice(0, max);
+  const seen = new Set<string>();
+  return picked.filter((id) => { const t = opts.titles?.get(id) ?? id; if (seen.has(t)) return false; seen.add(t); return true; }).slice(0, max);
 }
