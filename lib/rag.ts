@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import crypto from "node:crypto";
 import { withKey } from "./keys";
 import { enabledRecords, getMaster } from "./master";
 import { buildChunks, chunksVersion, search, type Chunk, type Hit, type SearchResult } from "./retrieval";
@@ -10,10 +11,17 @@ export const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
 // Optional semantic layer: data/vectors.json (npm run index) is used only when its `version` equals the current chunk
 // version, so vectors from an older source (or including since-disabled records) are never mixed in.
 type Vectors = { version: string; model: string; dims: number; vectors: Record<string, number[]> };
-let R: { chunks: Chunk[]; version: string; employers: string[]; vectors: Vectors | null } | null = null;
+type Artifact = { master_sha256: string; chunks_version: string; records: number; enabled: number; chunks: Chunk[] };
+let R: { chunks: Chunk[]; version: string; employers: string[]; vectors: Vectors | null; masterSha: string; artifactMasterSha: string | null; fromArtifact: boolean } | null = null;
+// Chunks come from the build artifact data/retrieval-index.json (scripts/build-retrieval-index.mjs) when it was built
+// from this exact master file; otherwise they are regenerated from the master here, so a stale index is never used.
 export function retrieval() {
   if (!R) {
-    const chunks = buildChunks(enabledRecords());
+    const masterSha = crypto.createHash("sha256").update(fs.readFileSync(path.join(process.cwd(), "data/master.json"))).digest("hex");
+    const ap = path.join(process.cwd(), "data/retrieval-index.json");
+    const art = fs.existsSync(ap) ? (JSON.parse(fs.readFileSync(ap, "utf8")) as Artifact) : null;
+    const fromArtifact = !!art && art.master_sha256 === masterSha;
+    const chunks = fromArtifact ? art!.chunks : buildChunks(enabledRecords());
     const version = chunksVersion(chunks);
     const employers = [...new Set(getMaster().records.filter((r) => r.indexable).flatMap((r) => [r.employer?.status === "named" ? r.employer.employer : null, ...(r.resume?.roles ?? []).map((x) => x.company)]).filter((x): x is string => !!x))];
     let vectors: Vectors | null = null;
@@ -22,9 +30,14 @@ export function retrieval() {
       const v = JSON.parse(fs.readFileSync(vp, "utf8")) as Vectors;
       if (v.version === version && chunks.every((c) => Array.isArray(v.vectors[c.id]))) vectors = v;
     }
-    R = { chunks, version, employers, vectors };
+    R = { chunks, version, employers, vectors, masterSha, artifactMasterSha: art?.master_sha256 ?? null, fromArtifact };
   }
   return R;
+}
+export function indexInfo() {
+  const r = retrieval();
+  const recs = getMaster().records;
+  return { masterSha: r.masterSha, artifactMasterSha: r.artifactMasterSha, fromArtifact: r.fromArtifact, version: r.version, chunks: r.chunks.length, enabled: recs.filter((x) => x.indexable).length, records: recs.length };
 }
 
 const post = (url: string, key: string, body: unknown) => fetch(url, { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body), signal: AbortSignal.timeout(25000) });

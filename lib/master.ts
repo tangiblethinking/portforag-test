@@ -60,16 +60,21 @@ export function resumeCard(): ProjectCardData | null {
 
 /**
  * Recent Work list (data/recent-work.json order). Title and destination URL stay the list's own; company, date,
- * description, skills and image come from the matched master record. Items with no enabled match keep only the
- * list's own title, URL and blurb.
+ * description, skills and image come from the exactly matched master record. A matched record that is switched off
+ * (indexable false) is removed from the list. Items with no exact master match (reported in master.unaccounted)
+ * keep only the list's own title, URL and blurb.
  */
 export function recentCards(items: RecentWorkItem[]): ProjectCardData[] {
   const m = getMaster();
-  const byId = new Map(m.records.filter((r) => r.indexable).map((r) => [r.id, r]));
+  const byId = new Map(m.records.map((r) => [r.id, r]));
   const link = new Map(m.recent_work.map((x) => [x.recent_id, x.record_id]));
-  return items.map((it) => {
-    const rec = byId.get(link.get(it.id) ?? "");
+  const out: ProjectCardData[] = [];
+  for (const it of items) {
+    const id = link.get(it.id);
+    const rec = id ? byId.get(id) : undefined;
+    if (rec && !rec.indexable) continue;
     const base = rec ? recordToCard(rec) : { company: m.fallback_company, date: null, summary: it.blurb, skills: [], image: null };
-    return { ...base, id: `recent-${it.id}`, title: it.title, liveUrl: it.url };
-  });
+    out.push({ ...base, id: `recent-${it.id}`, title: it.title, liveUrl: it.url });
+  }
+  return out;
 }

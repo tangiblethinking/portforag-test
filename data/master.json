@@ -45,12 +45,10 @@
       "cms-payload": "cmspayload",
       "uxrnd": "uxrnd",
       "recent-interview": "interview",
-      "recent-jobs": "ats-x2-prod-main",
       "recent-cart": "moderncheckout",
       "recent-oma": "oma",
       "recent-ia": "infoarchdesign",
       "recent-vlabs": "virtuallabs",
-      "recent-laws": "html-test",
       "recent-ape": "ape-x-apple-cl007v1-gemini-001",
       "recent-portfolioa32": "appprotoneov001ai",
       "recent-designops": "designopscasestudy",
@@ -165,8 +163,8 @@
     {
       "recent_id": "jobs",
       "url": "https://ats-x2-prod-main.vercel.app/jobs",
-      "record_id": "ats-x2-prod-main",
-      "match": "same origin as a record link"
+      "record_id": null,
+      "match": null
     },
     {
       "recent_id": "cart",
@@ -195,8 +193,8 @@
     {
       "recent_id": "laws",
       "url": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
-      "record_id": "html-test",
-      "match": "Vercel branch URL of project uxlegal"
+      "record_id": null,
+      "match": null
     },
     {
       "recent_id": "ape",
@@ -289,6 +287,18 @@
       "runtime_id": "plexus-alt-text-ai",
       "repo": "PlexusworldwideUX/AltTextAI",
       "reason": "repository owner PlexusworldwideUX is outside the evidence map (tangiblethinking only); not in the master, so not searchable and not shown as a card"
+    },
+    {
+      "source": "data/recent-work.json",
+      "runtime_id": "recent-jobs",
+      "url": "https://ats-x2-prod-main.vercel.app/jobs",
+      "reason": "unsupported alias: Recent Work URL is not an exact evidence-map link or capture URL; listed from data/recent-work.json only, not searchable, no evidence facts"
+    },
+    {
+      "source": "data/recent-work.json",
+      "runtime_id": "recent-laws",
+      "url": "https://uxlegal-git-main-mrkhrisk-5412s-projects.vercel.app",
+      "reason": "unsupported alias: Recent Work URL is not an exact evidence-map link or capture URL; listed from data/recent-work.json only, not searchable, no evidence facts"
     }
   ],
   "records": [
@@ -463,7 +473,8 @@
         "missing: captured image (no resume image source exists)",
         "missing: dates (resume spans several roles)"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "01xape",
@@ -597,7 +608,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x",
@@ -744,7 +756,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple",
@@ -878,7 +891,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl001",
@@ -1019,7 +1033,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl002",
@@ -1152,7 +1167,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl003",
@@ -1285,7 +1301,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl004",
@@ -1418,7 +1435,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl005",
@@ -1555,7 +1573,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl006",
@@ -1688,7 +1707,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl007",
@@ -1835,7 +1855,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl007-v1",
@@ -1976,7 +1997,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl007v1-gemini",
@@ -2081,7 +2103,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl007v1-gemini-001",
@@ -2226,7 +2249,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ape-x-apple-cl007v1-gemini-002",
@@ -2331,7 +2355,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotocartonovo",
@@ -2465,7 +2490,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneorouter",
@@ -2611,7 +2637,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov000",
@@ -2750,7 +2777,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov001",
@@ -2860,7 +2888,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov001-alt",
@@ -3026,7 +3055,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov001-rev",
@@ -3148,7 +3178,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov001ai",
@@ -3287,7 +3318,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov002",
@@ -3442,7 +3474,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov002-alt",
@@ -3536,7 +3569,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov002-pcric",
@@ -3652,7 +3686,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov006pnu",
@@ -3762,7 +3797,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprotoneov034pali",
@@ -3878,7 +3914,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "appprototesto001",
@@ -4005,7 +4042,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x",
@@ -4112,7 +4150,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x-api",
@@ -4252,7 +4291,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x2",
@@ -4388,7 +4428,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x2-prod",
@@ -4559,7 +4600,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x2-prod-main",
@@ -4731,7 +4773,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "ats-x2-test",
@@ -4865,7 +4908,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "backsups",
@@ -4940,7 +4984,8 @@
         "missing: named employer (status thirdparty)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "beforeafterslider",
@@ -5072,7 +5117,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "canvas",
@@ -5178,7 +5224,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "cmspayload",
@@ -5277,7 +5324,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "cmspayloadtest",
@@ -5379,7 +5427,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "companyuxtransform",
@@ -5518,7 +5567,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "designopscasestudy",
@@ -5664,7 +5714,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "designstyletest",
@@ -5802,7 +5853,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "directorcasestudy-ux-bgoals",
@@ -5944,7 +5996,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "dls",
@@ -6083,7 +6136,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "fixitaibeta",
@@ -6201,7 +6255,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "gemapi",
@@ -6333,7 +6388,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "gemini-job-bot",
@@ -6474,7 +6530,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "gemini-job-bot-cl001",
@@ -6615,7 +6672,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "gemini-job-bot-cl002",
@@ -6756,7 +6814,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "html-test",
@@ -6913,7 +6972,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "infoarchdesign",
@@ -7064,7 +7124,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "interview",
@@ -7199,7 +7260,8 @@
         "missing: named employer (status prep)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "japan-case-study",
@@ -7340,7 +7402,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "jdapi",
@@ -7415,7 +7478,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "jdsearch",
@@ -7543,7 +7607,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "minicms",
@@ -7695,7 +7760,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "minicms2",
@@ -7836,7 +7902,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "moderncheckout",
@@ -7982,7 +8049,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "oma",
@@ -8133,7 +8201,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "opdesignoprojo",
@@ -8272,7 +8341,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "opodesignonovo",
@@ -8407,7 +8477,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "payload-website-starter",
@@ -8499,7 +8570,8 @@
         "missing: named employer (status thirdparty)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "payloadcms",
@@ -8587,7 +8659,8 @@
         "missing: named employer (status thirdparty)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "payloadptest",
@@ -8679,7 +8752,8 @@
         "missing: named employer (status thirdparty)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "pcms",
@@ -8798,7 +8872,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "pearldirectorofproductdesign",
@@ -8921,7 +8996,8 @@
         "missing: named employer (status prep)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "personabehaviorgravitas",
@@ -9036,7 +9112,8 @@
         "missing: named employer (status brand)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "persongratadata",
@@ -9176,7 +9253,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "portfocorrect",
@@ -9308,7 +9386,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "portfodeploy",
@@ -9438,7 +9517,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "portfoprod",
@@ -9570,7 +9650,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "portforag-test",
@@ -9712,7 +9793,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "portfotest",
@@ -9821,7 +9903,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "prod-test",
@@ -9960,7 +10043,8 @@
         "missing: named employer (status jobtool)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "prodportfo",
@@ -10067,7 +10151,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "psms-mbl",
@@ -10179,7 +10264,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "pvoc",
@@ -10316,7 +10402,8 @@
         "missing: named employer (status brand)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "redo1",
@@ -10445,7 +10532,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "revengany",
@@ -10537,7 +10625,8 @@
         "missing: named employer (status thirdparty)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "revopoc",
@@ -10674,7 +10763,8 @@
         "missing: named employer (status brand)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "sitetest",
@@ -10783,7 +10873,8 @@
         "missing: named employer (status brand)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "testportfo",
@@ -10912,7 +11003,8 @@
         "missing: named employer (status portfolio)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "testrecruiter",
@@ -11035,7 +11127,8 @@
         "missing: named employer (status prep)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "teststudynew",
@@ -11166,7 +11259,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "uxr2d2",
@@ -11302,7 +11396,8 @@
         "missing: named employer (status unconfirmed)",
         "missing: dates"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "uxrnd",
@@ -11412,7 +11507,8 @@
         "missing: dates",
         "conflict: evidence position \"Senior UX Designer / UX Architect\" differs from supplied resume title \"UX Team Lead / Digital Experience\" at Plexus Worldwide"
       ],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     },
     {
       "id": "virtuallabs",
@@ -11563,7 +11659,8 @@
       ],
       "last_checked": "Nov 9, 2026, about 10:15 AM MST (America/Phoenix)",
       "flags": [],
-      "manual": {}
+      "manual": {},
+      "source_values": {}
     }
   ]
 }

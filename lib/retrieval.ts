@@ -26,7 +26,9 @@ export type MasterRecordLite = {
   deployment: { live_url: string | null; links: { url: string; title: string | null }[] };
   resume?: { name: string | null; title_line: string | null; summary: string; roles: MasterRole[]; skills_paragraphs: string[]; education: string };
 };
-export type Chunk = { id: string; record_id: string; part: string; text: string; group: string };
+/** `evidence`: the record's own substantive fields (description, keywords, functional keywords, skills) — the text a
+ * card must match on its own; resume restatements in experience/why/note text do not qualify a card. */
+export type Chunk = { id: string; record_id: string; part: string; text: string; group: string; evidence: string };
 export type Hit = { chunk: Chunk; score: number };
 export type Intent = "industries" | "employers" | "skills" | "capabilities" | "resume" | "general";
 
@@ -51,7 +53,7 @@ function employerLine(r: MasterRecordLite): string {
   const e = r.employer;
   if (!e) return "Employer: not recorded.";
   if (e.status === "named" && e.employer) return `Employer: ${e.employer}${e.position ? `; position: ${e.position}` : ""}.`;
-  return `Employer: not confirmed (evidence status: ${e.status}).`;
+  return `Employer: not confirmed (evidence status: ${e.status}) — do not attribute this project to any employer.`;
 }
 
 /** Chunks for enabled records only. Repository records stay whole (no truncation); the resume is split by section/role. */
@@ -62,10 +64,10 @@ export function buildChunks(records: MasterRecordLite[]): Chunk[] {
     if (r.kind === "resume" && r.resume) {
       const R = r.resume;
       const head = `Resume of ${R.name ?? "the portfolio owner"} — ${R.title_line ?? ""}.`;
-      out.push({ id: `${r.id}#summary`, record_id: r.id, group: "resume", part: "summary", text: `${head}\nSummary: ${R.summary}` });
-      R.roles.forEach((x, i) => out.push({ id: `${r.id}#role-${i + 1}`, record_id: r.id, group: "resume", part: "experience", text: `${head}\nExperience: ${x.title}, ${x.company} (${x.dates}). ${x.bullets.join(" ")}` }));
-      out.push({ id: `${r.id}#skills`, record_id: r.id, group: "resume", part: "skills", text: `${head}\nSkills: ${R.skills_paragraphs.join(" ")}` });
-      out.push({ id: `${r.id}#education`, record_id: r.id, group: "resume", part: "education", text: `${head}\nEducation: ${R.education}` });
+      out.push({ id: `${r.id}#summary`, record_id: r.id, group: "resume", part: "summary", text: `${head}\nSummary: ${R.summary}`, evidence: R.summary });
+      R.roles.forEach((x, i) => out.push({ id: `${r.id}#role-${i + 1}`, record_id: r.id, group: "resume", part: "experience", text: `${head}\nExperience: ${x.title}, ${x.company} (${x.dates}). ${x.bullets.join(" ")}`, evidence: x.bullets.join(" ") }));
+      out.push({ id: `${r.id}#skills`, record_id: r.id, group: "resume", part: "skills", text: `${head}\nSkills: ${R.skills_paragraphs.join(" ")}`, evidence: R.skills_paragraphs.join(" ") });
+      out.push({ id: `${r.id}#education`, record_id: r.id, group: "resume", part: "education", text: `${head}\nEducation: ${R.education}`, evidence: R.education });
       continue;
     }
     const lines = [
@@ -80,7 +82,8 @@ export function buildChunks(records: MasterRecordLite[]): Chunk[] {
       r.note ? `Note: ${r.note}` : "",
       r.deployment.links.length ? `Deployments: ${r.deployment.links.map((l) => `${l.url}${l.title ? ` (${l.title})` : ""}`).join("; ")}.` : "",
     ];
-    out.push({ id: r.id, record_id: r.id, group: r.employer?.status || "unknown", part: "record", text: lines.filter(Boolean).join("\n") });
+    const evidence = [r.description || "", r.keywords.join(", "), r.functional_keywords.map((k) => k.term).join(", "), r.skills.join(", ")].join("\n");
+    out.push({ id: r.id, record_id: r.id, group: r.employer?.status || "unknown", part: "record", text: lines.filter(Boolean).join("\n"), evidence });
   }
   return out;
 }
@@ -94,9 +97,11 @@ export function chunksVersion(chunks: Chunk[]): string {
 }
 
 const PORTFOLIO_WEIGHT = 0.6, PORTFOLIO_CAP = 2;
+// Words too generic to show that a record is about the question on its own.
+const GENERIC = new Set(tokenize("design designed designer ux ui product work worked project build built experience christopher kenreigh portfolio case study page site web app application system user"));
 
 // Query vocabulary for broad questions. These terms only steer retrieval; answers must still come from context.
-const INDUSTRY_TERMS = "industry industrial ecommerce commerce retail checkout cart b2b saas enterprise mining operational edtech education educational k12 lms learning curriculum school selfstorage storage kiosk legal law compliance healthcare wellness nutrition supplement finance recruiting hiring hr manufacturing automation".split(" ");
+const INDUSTRY_TERMS = "industry industrial ecommerce commerce retail checkout cart b2b saas enterprise mining operational edtech education educational k12 lms learning curriculum school selfstorage storage kiosk legal compliance healthcare wellness nutrition supplement finance recruiting hiring hr manufacturing automation".split(" ");
 const SKILL_TERMS = "skill design system token figma react typescript next tailwind accessibility wcag research prototyping information architecture ai rag prompt".split(" ");
 const CAPABILITY_TERMS = "leadership strategy research prototyping system pipeline dashboard simulation integration collaboration automation governance".split(" ");
 
@@ -111,7 +116,7 @@ export function detectIntent(q: string): Intent {
 }
 
 export type SearchOptions = { k?: number; perRecord?: number; employerNames?: string[] };
-export type SearchResult = { intent: Intent; hits: Hit[]; records: { id: string; score: number }[] };
+export type SearchResult = { intent: Intent; hits: Hit[]; records: { id: string; score: number }[]; terms: string[] };
 
 /** BM25 (k1 1.2, b 0.75) with intent expansion, resume pinning for broad questions and per-record diversity. */
 export function search(chunks: Chunk[], query: string, opts: SearchOptions = {}): SearchResult {
@@ -168,22 +173,38 @@ export function search(chunks: Chunk[], query: string, opts: SearchOptions = {})
   const records = [...best].filter(([id]) => inHits.has(id)).map(([id, score]) => ({ id, score })).sort((a, b) => b.score - a.score || a.id.localeCompare(b.id));
   // An explicit resume request ranks the resume record first.
   if (intent === "resume" && inHits.has("resume")) records.sort((a, b) => (a.id === "resume" ? -1 : b.id === "resume" ? 1 : 0));
-  return { intent, hits, records };
+  const terms = [...weights.keys()].filter((t) => !GENERIC.has(t));
+  return { intent, hits, records, terms };
+}
+
+/** Query terms the record's own substantive evidence contains (empty = the card is not supported on its own). */
+export function cardSupport(result: SearchResult, recordId: string): string[] {
+  const ev = new Set(result.hits.filter((h) => h.chunk.record_id === recordId).flatMap((h) => tokenize(h.chunk.evidence)));
+  return result.terms.filter((t) => ev.has(t));
 }
 
 /**
- * Card ids for an answer: ids the model cited that were in context and are enabled; otherwise records that scored
- * at least `ratio` of the best project. No forced count: may return none.
+ * Card ids for an answer. A project card must be enabled, in this answer's context, not a portfolio-site record (those
+ * restate the resume), and its own substantive evidence must contain a specific query term. The model's cited ids
+ * are used first (still subject to these checks); otherwise the best-scoring supported projects. No forced count.
  */
 export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; ratio?: number; includeResume?: boolean } = {}): string[] {
   const max = opts.max ?? 4, ratio = opts.ratio ?? 0.55;
-  const ctx = new Set(result.hits.map((h) => h.chunk.record_id));
-  const ok = (id: string) => enabled.has(id) && ctx.has(id);
-  const fromModel = [...new Set(cited)].filter(ok);
-  if (fromModel.length) return fromModel.slice(0, max);
-  const projects = result.records.filter((r) => r.id !== "resume" && enabled.has(r.id));
-  const top = projects[0]?.score || 0;
-  const picked = top > 0 ? projects.filter((r) => r.score >= top * ratio).map((r) => r.id) : [];
-  if (opts.includeResume && enabled.has("resume") && ctx.has("resume")) picked.unshift("resume");
-  return picked.slice(0, max);
+  const ctx = new Map<string, Chunk>();
+  for (const h of result.hits) if (!ctx.has(h.chunk.record_id)) ctx.set(h.chunk.record_id, h.chunk);
+  const supported = (id: string) => {
+    const c = ctx.get(id);
+    if (!c || !enabled.has(id)) return false;
+    if (id === "resume") return true;
+    return c.group !== "portfolio" && cardSupport(result, id).length > 0;
+  };
+  let picked = [...new Set(cited)].filter(supported);
+  if (!picked.some((id) => id !== "resume")) {
+    const projects = result.records.filter((r) => r.id !== "resume" && supported(r.id));
+    const top = projects[0]?.score || 0;
+    const extra = top > 0 ? projects.filter((r) => r.score >= top * ratio).map((r) => r.id) : [];
+    picked = [...picked, ...extra];
+  }
+  if (opts.includeResume && supported("resume") && !picked.includes("resume")) picked.unshift("resume");
+  return [...new Set(picked)].slice(0, max);
 }
