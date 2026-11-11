@@ -23,12 +23,10 @@
     "repository": 86,
     "resume": 1,
     "images": 71,
-    "indexable": 86
+    "indexable": 87
   },
   "refresh": {
-    "carried_over": [
-      "backsups"
-    ],
+    "carried_over": [],
     "removed_since_last_build": []
   },
   "aliases": {
@@ -4916,7 +4914,7 @@
     {
       "id": "backsups",
       "kind": "repository",
-      "indexable": false,
+      "indexable": true,
       "recommendation": "Leave out",
       "title": "backsups",
       "title_source": "evidence-map n (repository name)",
