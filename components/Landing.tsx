@@ -3,7 +3,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import * as Dialog from "@radix-ui/react-dialog";
 import type { ProjectCardData } from "@/lib/project-display";
-import { ProjectCardGrid, ProjectSheet, SheetShell } from "@/components/ProjectCards";
+import { PortfolioSheet, ProjectCardGrid, ProjectSheet, SheetShell } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI, makeDeck, type Chip } from "@/lib/config";
 import { trackVisualViewport } from "@/lib/visual-viewport";
 
@@ -89,6 +89,8 @@ export default function Landing({
   const [busy, setBusy] = useState<string | null>(null);
   const [line, setLine] = useState("");
   const [sheet, setSheet] = useState<ProjectCardData | null>(null);
+  // the traditional portfolio has its own sheet (title, close, site only — no details column)
+  const [portfolioOpen, setPortfolioOpen] = useState(false);
   // titles offered in this conversation ("Would you like to know about …?"); sent back so used offers never return
   const [offered, setOffered] = useState<string[]>([]);
   const [menu, setMenu] = useState(false);
@@ -192,6 +194,10 @@ export default function Landing({
   function openProject(p: ProjectCardData) {
     if (p.id === "resume") {
       push({ kind: "resume" });
+      return;
+    }
+    if (portfolio && p.id === portfolio.id) {
+      setPortfolioOpen(true);
       return;
     }
     setSheet(p);
@@ -326,7 +332,7 @@ export default function Landing({
       <header className="sticky top-0 z-20 -mx-4 flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-[#f5f5f7]/90 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/70 sm:-mx-6 sm:px-6">
         <div className="flex flex-1 basis-0 items-center gap-4">
           {portfolio && (
-            <button type="button" aria-haspopup="dialog" onClick={() => setSheet(portfolio)} className="min-h-11 text-sm font-medium text-blue-600 dark:text-blue-400">
+            <button type="button" aria-haspopup="dialog" onClick={() => setPortfolioOpen(true)} className="min-h-11 text-sm font-medium text-blue-600 dark:text-blue-400">
               Portfolio
             </button>
           )}
@@ -496,6 +502,7 @@ export default function Landing({
       </SheetShell>
 
       <ProjectSheet card={sheet} onClose={() => setSheet(null)} />
+      <PortfolioSheet card={portfolioOpen ? portfolio : null} onClose={() => setPortfolioOpen(false)} />
     </div>
   );
 }

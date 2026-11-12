@@ -249,3 +249,25 @@ export function ProjectSheet({ card, onClose }: { card: ProjectCardData | null; 
     </SheetShell>
   );
 }
+
+/**
+ * Traditional-portfolio sheet (uxapex.com/portfolio) only: title + close, then the site fills the whole content area.
+ * No details column; every other card keeps ProjectSheet.
+ */
+export function PortfolioSheet({ card, onClose }: { card: ProjectCardData | null; onClose: () => void }) {
+  return (
+    <SheetShell open={!!card} title={card?.title ?? ""} onClose={onClose}>
+      {card?.liveUrl && (
+        <div className="flex min-h-0 flex-1 flex-col bg-white">
+          <iframe
+            src={card.liveUrl}
+            title={`${card.title} live preview`}
+            sandbox="allow-scripts allow-same-origin allow-popups allow-forms"
+            referrerPolicy="no-referrer"
+            className="block h-full w-full flex-1 border-0 bg-white"
+          />
+        </div>
+      )}
+    </SheetShell>
+  );
+}

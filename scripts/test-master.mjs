@@ -464,7 +464,9 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   const pq = q("Christopher Kenreigh portfolio site uxapex Director of UX & Product Design");
   ok(pq.hits.some((h) => h.chunk.record_id === "portfoprod") && !pickCardIds(["portfoprod"], pq, en, { titles }).includes("portfoprod"), "normal path: portfolio-site records still never become chat cards");
   const land = read0("components/Landing.tsx");
-  ok(/onClick=\{\(\) => setSheet\(portfolio\)\}[\s\S]*?Portfolio/.test(land) && /<ProjectSheet card=\{sheet\}/.test(land), "header Portfolio opens the shared card in ProjectSheet");
+  ok(/onClick=\{\(\) => setPortfolioOpen\(true\)\}[\s\S]*?Portfolio/.test(land) && /<PortfolioSheet card=\{portfolioOpen \? portfolio : null\}/.test(land) && /<ProjectSheet card=\{sheet\}/.test(land), "header Portfolio opens the dedicated PortfolioSheet; other cards keep ProjectSheet");
+  ok(/if \(portfolio && p\.id === portfolio\.id\) \{\s*setPortfolioOpen\(true\);/.test(land), "chat failure card (portfolio) opens the dedicated PortfolioSheet");
+  { const cardsSrc = fs.readFileSync("components/ProjectCards.tsx", "utf8"); const ps = cardsSrc.slice(cardsSrc.indexOf("export function PortfolioSheet")); ok(ps.length > 30 && (ps.match(/<iframe/g) || []).length === 1 && !/<aside|<Row|Company|Skills|Dialog\.Description|description=/.test(ps), "PortfolioSheet: title + close + iframe only (no details column)"); }
   ok(!/Network hiccup/.test(land) && /catch \{\s*m = \{[^}]*ids: failIds/.test(land) && /all_keys_busy" \? \[\.\.\.failIds, "resume"\]/.test(land), "failures show the portfolio card (plus resume when busy)");
 }
 // ---- landing UI: nav, chat column, footer, quotes ----
@@ -543,10 +545,10 @@ ok(/v\.version === version/.test(rag), "vectors only when version-matched");
 ok(!/line-clamp|truncate|text-ellipsis|ellipsis|gradient|\.slice\(0, ?\d/.test(cards), "cards: no clamp/truncate/ellipsis/gradient");
 { const pc = cards.slice(cards.indexOf("export function ProjectCard("), cards.indexOf("function useEqualHeights")); ok((pc.match(/>\s*See More\s*</g) || []).length === 1 && /justify-end/.test(pc), "cards: See More, right-aligned"); }
 ok(/<h3[\s\S]*?<\/h3>\s*\{!!card\.skills\.length && <SkillsChip/.test(cards), "cards: Skills chip beneath the title");
-const sheet = cards.slice(cards.indexOf("export function ProjectSheet"));
+const sheet = cards.slice(cards.indexOf("export function ProjectSheet"), cards.indexOf("export function PortfolioSheet"));
 ok(!/Open ↗|View live content|If the preview is blank|Sources|Screenshot|Live content/.test(sheet + landing), "no external/view-live buttons or helper sections");
 ok(/<Row k="Skills"><ul/.test(sheet) && /sandbox="allow-scripts allow-same-origin allow-popups allow-forms"/.test(sheet), "project sheet unchanged: skills list + iframe sandbox");
-ok((cards.match(/<iframe/g) || []).length === 1 && (landing.match(/<iframe/g) || []).length === 1, "iframes: ProjectSheet + resume sheet only");
+ok((cards.match(/<iframe/g) || []).length === 2 && (landing.match(/<iframe/g) || []).length === 1, "iframes: ProjectSheet + PortfolioSheet + resume sheet only");
 ok(/<ProjectCardGrid cards=\{browse\}/.test(landing) && /<ProjectCardGrid cards=\{recent\.slice\(0, top\.shown\)\} onOpen=\{setSheet\} \/>/.test(landing) && /Load more/.test(landing), "Browse + Recent Work keep approved grid + Load more");
 ok(!/ExploreCard|NavCard|function Thumb|kind: "work"/.test(landing) && !fs.existsSync("components/Chat.tsx"), "no legacy card paths");
 
