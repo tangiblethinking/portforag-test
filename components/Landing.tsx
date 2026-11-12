@@ -5,6 +5,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import type { ProjectCardData } from "@/lib/project-display";
 import { ProjectCardGrid, ProjectSheet, SheetShell } from "@/components/ProjectCards";
 import { HIRING_ASKS, OPENING, SCIFI, makeDeck, type Chip } from "@/lib/config";
+import { trackVisualViewport } from "@/lib/visual-viewport";
 
 type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: Chip[]; ids?: string[] };
 /** Chips from the API are { label, message } (a "Yes" chip sends a message naming the offered record); plain strings are both. */
@@ -94,6 +95,7 @@ export default function Landing({
   const end = useRef<HTMLDivElement>(null);
   const box = useRef<HTMLDivElement>(null); // chat-mode scroll region (the thread)
   const lastAnswer = useRef<HTMLDivElement>(null);
+  const bar = useRef<HTMLFormElement>(null); // the composer: one element in both modes (fixed bar on mobile)
   const quotes = useRef(makeDeck(SCIFI));
   const top = stack[stack.length - 1] || null;
   const byId = useMemo(() => Object.fromEntries([...projects, ...(portfolio ? [portfolio] : [])].map((p) => [p.id, p])), [projects, portfolio]);
@@ -118,6 +120,34 @@ export default function Landing({
     mq.addEventListener("change", close);
     return () => mq.removeEventListener("change", close);
   }, [menu]);
+
+  // Mobile composer from first load: keep the visual-viewport insets current (iOS keyboard/toolbars) and publish the
+  // bar's height so the landing page and the chat shell can leave room for it.
+  useEffect(() => {
+    const root = document.documentElement;
+    const stop = trackVisualViewport(root);
+    const el = bar.current;
+    const ro = el && typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => root.style.setProperty("--composer-h", `${el.offsetHeight}px`)) : null;
+    if (el && ro) ro.observe(el);
+    return () => {
+      stop();
+      ro?.disconnect();
+      root.style.removeProperty("--composer-h");
+    };
+  }, []);
+  // chat mode: lock the page so only the thread scrolls (the landing page stays free to scroll)
+  useEffect(() => {
+    if (!chatMode) return;
+    const html = document.documentElement, body = document.body;
+    const prev = [html.style.overflow, body.style.overflow];
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    window.scrollTo(0, 0);
+    return () => {
+      html.style.overflow = prev[0];
+      body.style.overflow = prev[1];
+    };
+  }, [chatMode]);
 
   function refreshHomeChips() {
     const { batch, used } = nextChipBatch(usedChips);
@@ -214,11 +244,16 @@ export default function Landing({
 
   const composer = (
     <form
+      ref={bar}
       onSubmit={(e) => {
         e.preventDefault();
         ask(input);
       }}
-      className={chatMode ? "-mx-4 flex-none border-t border-black/10 bg-[#f5f5f7]/90 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-xl dark:border-white/10 dark:bg-black/70 sm:-mx-6 sm:px-6" : "mt-4"}
+      // mobile: .composer-bar is position:fixed at the bottom of the visible viewport in both modes (globals.css);
+      // desktop: in-flow — under the chips in the Ask section on landing, the bottom flex-none row of the chat column
+      className={`composer-bar flex-none border-t border-black/10 bg-[#f5f5f7]/90 px-4 pt-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/70 ${
+        chatMode ? "sm:-mx-6 sm:px-6 sm:pb-[max(0.75rem,env(safe-area-inset-bottom))]" : "sm:mt-4 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none dark:sm:bg-transparent"
+      }`}
     >
       <div className="flex gap-2">
         <input
@@ -284,8 +319,10 @@ export default function Landing({
   );
 
   return (
-    // chat mode: a viewport-height column — header on top, the thread is the only scrolling region, composer at the bottom
-    <div className={`mx-auto flex max-w-5xl flex-col px-4 sm:px-6 ${chatMode ? "h-dvh overflow-hidden" : "min-h-dvh pb-10"}`}>
+    // chat mode: a column filling the visible viewport (mobile: .chat-shell, fixed to the visual viewport; desktop: h-dvh) —
+    // header on top, the thread is the only scrolling region, composer at the bottom. Landing: the page scrolls and
+    // .landing-pad leaves room above the mobile composer bar.
+    <div className={`mx-auto flex max-w-5xl flex-col px-4 sm:px-6 ${chatMode ? "chat-shell h-dvh overflow-hidden" : "landing-pad min-h-dvh pb-10"}`}>
       <header className="sticky top-0 z-20 -mx-4 flex flex-none items-center justify-between gap-3 border-b border-black/10 bg-[#f5f5f7]/90 px-4 py-3 backdrop-blur-xl dark:border-white/10 dark:bg-black/70 sm:-mx-6 sm:px-6">
         <div className="flex flex-1 basis-0 items-center gap-4">
           {portfolio && (
@@ -353,7 +390,6 @@ export default function Landing({
             </section>
             {thread}
           </div>
-          {composer}
         </>
       ) : (
         <>
@@ -397,10 +433,11 @@ export default function Landing({
                 </button>
               ))}
             </div>
-            {composer}
           </section>
         </>
       )}
+      {/* the same composer element in both modes (no remount on entering chat), outside the mode switch */}
+      {composer}
 
       <SheetShell
         open={!!top}

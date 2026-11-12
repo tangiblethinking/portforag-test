@@ -473,7 +473,48 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   ok(!/Google Gemini|Questions are sent to/.test(land), "visitor-facing Gemini footer removed");
   ok(/href="\/contact" className="hidden[^"]*sm:block"/.test(land) && /aria-label="Toggle dark mode" className="hidden[^"]*sm:block"/.test(land) && /aria-label="Open menu"[^>]*sm:hidden/.test(land), "desktop: Contact + theme in header; mobile: hamburger only");
   ok(/className="drawer fixed inset-y-0 right-0[^"]*sm:hidden"/.test(land) && /<Link href="\/contact" onClick=\{\(\) => setMenu\(false\)\}/.test(land) && /onClick=\{toggle\} aria-pressed/.test(land), "mobile side sheet: Contact (closes it) + light/dark control");
-  ok(/h-dvh overflow-hidden/.test(land) && /ref=\{box\} className="[^"]*min-h-0 flex-1 overflow-y-auto/.test(land) && /flex-none border-t[^"]*safe-area-inset-bottom/.test(land) && !/sticky bottom-0/.test(land), "chat: viewport column, thread scrolls, composer anchored at the bottom");
+  // mobile composer: one fixed bar at the bottom of the visible viewport from first load; desktop stays in-flow
+  const css = read0("app/globals.css");
+  const mob = css.slice(css.indexOf("@media (max-width: 639.98px)"));
+  ok(/@media \(max-width: 639\.98px\)/.test(css) && /\.composer-bar \{ position: fixed; left: 0; right: 0; bottom: var\(--vv-bottom, 0px\); z-index: 30;[^}]*padding-bottom: max\(0\.75rem, env\(safe-area-inset-bottom\)\)/.test(mob), "mobile: composer is position:fixed at the visual-viewport bottom, z 30 (above header z-20, below sheets z-50), safe-area padded");
+  ok(/html\[data-kb="open"\] \.composer-bar \{ padding-bottom: 0\.5rem; \}/.test(mob), "keyboard open: tight bottom padding, no safe-area double pad");
+  ok(/\.landing-pad \{ padding-bottom: calc\(var\(--composer-h/.test(mob) && /"landing-pad min-h-dvh pb-10"/.test(land), "landing (mobile): bottom padding = composer height so the last chips scroll above the bar");
+  ok(/\.chat-shell \{ position: fixed;[^}]*top: var\(--vv-top, 0px\); height: var\(--vv-height, 100dvh\); padding-bottom: var\(--composer-h/.test(mob) && /"chat-shell h-dvh overflow-hidden"/.test(land), "chat (mobile): shell fills the visual viewport and leaves room for the bar; desktop: h-dvh column");
+  const comp0 = land.slice(land.indexOf("const composer"), land.indexOf("const thread"));
+  ok(/ref=\{bar\}/.test(comp0) && /composer-bar flex-none/.test(comp0) && /sm:mt-4 sm:border-0 sm:bg-transparent sm:p-0/.test(comp0) && /sm:-mx-6 sm:px-6 sm:pb-\[max\(0\.75rem,env\(safe-area-inset-bottom\)\)\]/.test(comp0) && !/(^|\s)(fixed|sticky)(\s|")/.test(comp0), "composer: fixed only via the mobile .composer-bar rule; desktop landing in-flow under the chips, desktop chat a flex-none bottom row");
+  ok((land.match(/\{composer\}/g) || []).length === 1 && land.indexOf("{composer}") > land.lastIndexOf("{homeChips.map") && land.indexOf("{composer}") < land.indexOf("<SheetShell"), "the same composer element renders in both modes (outside the mode switch): bar from first load, no remount");
+  ok(/ref=\{box\} className="[^"]*min-h-0 flex-1 overflow-y-auto overscroll-contain/.test(land) && !/sticky bottom-0/.test(land), "chat: the thread is the only scrolling region");
+  ok(/trackVisualViewport\(root\)/.test(land) && /new ResizeObserver\(\(\) => root\.style\.setProperty\("--composer-h"/.test(land) && /root\.style\.removeProperty\("--composer-h"\)/.test(land), "Landing tracks the visual viewport + composer height from mount and cleans up");
+  {
+    const lock = land.slice(land.indexOf("// chat mode: lock the page"), land.indexOf("function refreshHomeChips"));
+    ok(/if \(!chatMode\) return;/.test(lock) && /html\.style\.overflow = "hidden"/.test(lock) && /body\.style\.overflow = "hidden"/.test(lock) && /html\.style\.overflow = prev\[0\]/.test(lock) && /body\.style\.overflow = prev\[1\]/.test(lock) && /\[chatMode\]\);/.test(lock), "html/body overflow locked only in chat mode, restored on leaving/unmount");
+  }
+  ok(/interactiveWidget: "resizes-content"/.test(read0("app/layout.tsx")), "layout keeps interactive-widget: resizes-content (Chrome/Android)");
+  {
+    const V = await import("../lib/visual-viewport.ts");
+    const e = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+    ok(e(V.viewportInsets(844), { top: 0, height: 844, bottom: 0, keyboard: false }) && e(V.viewportInsets(844, null), V.viewportInsets(844)), "insets: no visualViewport -> full window, bar at bottom 0");
+    ok(e(V.viewportInsets(844, { height: 844, offsetTop: 0 }), { top: 0, height: 844, bottom: 0, keyboard: false }), "insets: keyboard closed -> bottom 0, safe-area padding kept");
+    ok(e(V.viewportInsets(844, { height: 508, offsetTop: 0 }), { top: 0, height: 508, bottom: 336, keyboard: true }), "insets: iOS keyboard (visual viewport shrinks) -> bar lifted by innerHeight - vv.height - offsetTop");
+    ok(e(V.viewportInsets(844, { height: 508, offsetTop: 120 }), { top: 120, height: 508, bottom: 216, keyboard: true }), "insets: iOS pans the visual viewport -> offsetTop subtracted, shell top follows");
+    ok(V.viewportInsets(844, { height: 820, offsetTop: 0 }).keyboard === false && V.viewportInsets(844, { height: 900, offsetTop: 0 }).bottom === 0, "insets: toolbar jitter below the threshold is not a keyboard; never negative");
+    // wiring against a fake window/visualViewport
+    const ls = {}, wl = {}, props = {}, root = { style: { setProperty: (k, v) => (props[k] = v), removeProperty: (k) => delete props[k] }, dataset: {} };
+    const vv = { height: 844, offsetTop: 0, addEventListener: (t, f) => (ls[t] = f), removeEventListener: (t) => delete ls[t] };
+    const g = globalThis, saved = { window: g.window, raf: g.requestAnimationFrame, caf: g.cancelAnimationFrame };
+    g.window = { innerHeight: 844, visualViewport: vv, addEventListener: (t, f) => (wl[t] = f), removeEventListener: (t) => delete wl[t] };
+    g.requestAnimationFrame = (f) => (f(), 0);
+    g.cancelAnimationFrame = () => {};
+    const stop = V.trackVisualViewport(root);
+    ok(props["--vv-bottom"] === "0px" && props["--vv-height"] === "844px" && root.dataset.kb === "closed" && ls.resize && ls.scroll && wl.resize, "wiring: listens to visualViewport resize + scroll and window resize; first-load values set");
+    vv.height = 500; vv.offsetTop = 40; ls.resize();
+    ok(props["--vv-bottom"] === "304px" && props["--vv-top"] === "40px" && props["--vv-height"] === "500px" && root.dataset.kb === "open", "wiring: keyboard open -> bar bottom/shell follow the visual viewport, data-kb=open");
+    vv.height = 844; vv.offsetTop = 0; ls.scroll();
+    ok(props["--vv-bottom"] === "0px" && root.dataset.kb === "closed", "wiring: keyboard closed again -> back to the bottom, safe-area padding");
+    stop();
+    ok(!Object.keys(props).length && !("kb" in root.dataset) && !ls.resize && !ls.scroll && !wl.resize, "wiring: cleanup removes listeners, vars and data-kb");
+    Object.assign(g, { window: saved.window, requestAnimationFrame: saved.raf, cancelAnimationFrame: saved.caf });
+  }
   const comp = land.slice(land.indexOf("const composer"), land.indexOf("const thread"));
   ok(!/suggestions|<p /.test(comp), "composer is only the input and Send");
   ok(/min-h-\[calc\(var\(--thread-h/.test(land) && /lastAnswer\.current/.test(land) && !/scrollIntoView/.test(land), "chips live in the thread below the latest answer; scrolling targets the answer, not the chips");

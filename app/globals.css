@@ -7,3 +7,11 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 .sheet { animation: up .28s cubic-bezier(.2,.8,.2,1); }
 @keyframes in-right { from { transform: translateX(100%) } to { transform: translateX(0) } }
 .drawer { animation: in-right .28s cubic-bezier(.2,.8,.2,1); }
+/* Mobile composer: a fixed bar at the bottom of the *visible* viewport from first load (vars from lib/visual-viewport.ts).
+   Unlayered, so it wins over Tailwind utilities; desktop (sm, 640px+) is untouched. */
+@media (max-width: 639.98px) {
+  .composer-bar { position: fixed; left: 0; right: 0; bottom: var(--vv-bottom, 0px); z-index: 30; padding-bottom: max(0.75rem, env(safe-area-inset-bottom)); }
+  html[data-kb="open"] .composer-bar { padding-bottom: 0.5rem; } /* keyboard open: sit just above it, no safe-area double pad */
+  .landing-pad { padding-bottom: calc(var(--composer-h, 4.5rem) + 1.5rem); } /* last chips scroll fully above the bar */
+  .chat-shell { position: fixed; left: 0; right: 0; top: var(--vv-top, 0px); height: var(--vv-height, 100dvh); padding-bottom: var(--composer-h, 4.5rem); }
+}
