@@ -13,11 +13,16 @@ function limited(ip: string) { const now = Date.now(); const a = (hits.get(ip) |
 function offerRecs(): OfferRec[] {
   return orderOfferRecs(enabledRecords().filter((r) => r.kind === "resume" || r.employer?.status !== "portfolio").map((r) => ({ id: r.id, title: r.title, recommendation: r.recommendation })));
 }
-/** Records related to a topic record: same family, in master order (enabled, non-portfolio only via offerRecs). */
+/** Records related to topic records: same named employer first, then same family, in master order (offers are
+ * further limited to enabled, non-portfolio records via offerRecs). */
 function relatedTo(ids: string[]): string[] {
   const recs = getMaster().records;
-  const fams = new Set(ids.map((id) => recs.find((r) => r.id === id)?.family).filter(Boolean));
-  return recs.filter((r) => r.indexable && fams.has(r.family) && !ids.includes(r.id)).map((r) => r.id);
+  const src = ids.map((id) => recs.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => !!r);
+  const emps = new Set(src.map((r) => (r.employer?.status === "named" ? r.employer.employer : null)).filter(Boolean));
+  const fams = new Set(src.map((r) => r.family).filter(Boolean));
+  const pool = recs.filter((r) => r.indexable && !ids.includes(r.id));
+  const sameEmp = pool.filter((r) => r.employer?.status === "named" && emps.has(r.employer.employer));
+  return [...new Set([...sameEmp, ...pool.filter((r) => fams.has(r.family))].map((r) => r.id))];
 }
 /** Identity questions: records from the resume's current employer (named-employer evidence only). */
 function currentWork(): string[] {

@@ -339,6 +339,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   // wiring
   const rt = read0("app/api/chat/route.ts"), land = read0("components/Landing.tsx");
   ok(rt.indexOf("await understand(") > 0 && rt.indexOf("await understand(") < rt.indexOf("await retrieve(") && /retrieve\(u\.query\)/.test(rt), "route: understanding runs before retrieval, on the rewritten query");
+  ok(/sameEmp/.test(rt) && /emps\.has\(r\.employer\.employer\)/.test(rt), "route: related offers prefer the same named employer, then the same family");
   ok(/recordHits\(id\)/.test(rt) && /ids = enabledIds\(\)\.has\(id\) \? \[id\] : \[\]/.test(rt), "route: accepted offer takes the direct path to that record's card");
   ok(/label: "Yes", message: yesMessage\(offer\.title\)/.test(rt) && /offerLine\(offer\.title\)/.test(rt), "route: Yes chip sends a named message; answer asks the offer question");
   ok(/onClick=\{\(\) => ask\(s\.message\)\}/.test(land) && /\{s\.label\}/.test(land) && /offered,/.test(land), "UI: chip shows label, sends message; offered titles sent back");

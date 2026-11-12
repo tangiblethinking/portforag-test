@@ -62,7 +62,7 @@ export async function retrieve(q: string): Promise<SearchResult & { mode: "lexic
 
 /** Compact interpretation call for the understanding step (lib/understand.ts): JSON only, short timeout. */
 export async function interpretModel(prompt: string): Promise<string> {
-  return withKey(k => fetch(`${G}/${MODEL}:generateContent`, { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 300, temperature: 0, responseMimeType: "application/json" } }), signal: AbortSignal.timeout(8000) }),
+  return withKey(k => fetch(`${G}/${MODEL}:generateContent`, { method: "POST", headers: { "content-type": "application/json", "x-goog-api-key": k }, body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], generationConfig: { maxOutputTokens: 600, temperature: 0, responseMimeType: "application/json" } }), signal: AbortSignal.timeout(8000) }),
     async r => { const j = await r.json(); return (j.candidates?.[0]?.content?.parts || []).filter((p: any) => !p.thought).map((p: any) => p.text || "").join("") as string; });
 }
 /** Hits for one record's own chunks (direct path when a visitor accepts an offer). */
