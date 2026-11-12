@@ -26,7 +26,7 @@ export const HIRING_ASKS = [
   "What did his Plexus UX Strategy Case Study show about product strategy?",
   "How did he assess design team maturity in the Design Ops Case Study?",
   "What’s his experience with data-heavy dashboards?",
-  "How did he approach the 0→1 Japan market launch at Plexus?",
+  "What did the Japan expansion case study at Plexus involve?",
   "Which projects show his cross-functional collaboration with engineers and SMEs?",
   "What industries has he designed for?",
   "Is he open to new opportunities right now?",

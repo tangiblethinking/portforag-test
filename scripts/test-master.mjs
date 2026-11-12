@@ -269,7 +269,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   ok(none.length === 0, `every staged prompt has supported project evidence (none: ${none.join(" | ")})`);
   ok(!prompts.some((s) => ["Can he lead a design system across teams?", "Has he collaborated closely with engineering and PM?", "Who is this guy?", "Show current work"].includes(s)), "resume-only staged prompts reworded");
   ok(cfg.HIRING_ASKS.length === 30 && new Set(cfg.HIRING_ASKS).size === 30, "pool keeps 30 distinct prompts");
-  for (const [s, id] of [["How has he built and documented design systems like Pulse Kit and Tangible DLS?", "dls"], ["Which projects show his cross-functional collaboration with engineers and SMEs?", "virtuallabs"], ["How did he assess design team maturity in the Design Ops Case Study?", "designopscasestudy"], ["How did he approach the 0→1 Japan market launch at Plexus?", "japan-case-study"]])
+  for (const [s, id] of [["How has he built and documented design systems like Pulse Kit and Tangible DLS?", "dls"], ["Which projects show his cross-functional collaboration with engineers and SMEs?", "virtuallabs"], ["How did he assess design team maturity in the Design Ops Case Study?", "designopscasestudy"], ["What did the Japan expansion case study at Plexus involve?", "japan-case-study"]])
     ok(cardable(s).includes(id), `reworded "${s}" supports ${id}`);
 }
 // disabled exclusion (incl. stale paths)
