@@ -10,7 +10,7 @@ import type { ProjectCardData } from "@/lib/project-display";
  *   (public/browse/about--portrait.webp, 1000x558 on white, whole head in frame).
  */
 const TEXT = {
-  recent: "Live deployments from the AppProto router — case studies, prototypes, and experiments.",
+  recent: "See my real work, live deployments — case studies, prototypes, and experiments.",
   about: "Principal-level digital product leader and B2B SaaS architect with over 11 years of professional experience engineering complex software, data-heavy analytics platforms, and AI-native workflows. He operates at the intersection of design systems governance, enterprise architecture, and cross-functional engineering execution.",
 };
 const ABOUT_IMAGE = { src: "/browse/about--portrait.webp", alt: "Portrait of Christopher Kenreigh", width: 1000, height: 558 };
