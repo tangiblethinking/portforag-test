@@ -258,6 +258,91 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   const eng = q("Has he collaborated closely with engineering and PM?");
   ok(pickCardIds(["resume", "pvoc"], eng, en, { titles }).includes("pvoc"), "original 'engineering and PM' question: Pulse Kit card possible");
 }
+// ---- understanding step + guided offers (lib/understand.ts; model call mocked) ----
+{
+  const U = await import("../lib/understand.ts");
+  const recsOf = (records) => U.orderOfferRecs(records.filter((r) => r.indexable && (r.kind === "resume" || r.employer?.status !== "portfolio")).map((r) => ({ id: r.id, title: r.title, recommendation: r.recommendation })));
+  const recs = recsOf(M.records);
+  const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
+  const titles = new Map(M.records.map((x) => [x.id, x.title]));
+  let calls = 0;
+  const model = (obj) => async () => { calls++; return JSON.stringify(obj); };
+  const boom = async () => { calls++; throw new Error("gemini 500"); };
+  // identity questions: resume context, never an empty search; no model call needed
+  for (const s of ["who is he?", "Who is he", "what does he do?", "tell me about him", "who is this?", "Who is Christopher Kenreigh?"]) {
+    calls = 0;
+    const u = await U.understand(s, [], recs, boom);
+    const r = q(u.query);
+    ok(u.intent === "identity" && u.query === U.IDENTITY_QUERY && calls === 0, `"${s}": understood as identity`);
+    ok(r.hits.length > 0 && r.hits.some((h) => h.chunk.id === "resume#summary") && r.hits.some((h) => h.chunk.id === "resume#role-1"), `"${s}": resume summary + current role in context (not zero hits)`);
+    ok(pickCardIds(["resume"], r, en, { includeResume: true, titles })[0] === "resume", `"${s}": resume card`);
+  }
+  ok(q("who is he?").hits.length === 0, "raw 'who is he?' alone would retrieve nothing (why the understanding step exists)");
+  // model interpretation: structured only; invalid ids / disabled records dropped; raw words kept in the search
+  calls = 0;
+  const ds = await U.understand("Show me the design system work", [], recs, model({ intent: "work", query: "design system projects", topics: ["dls", "canvas", "made-up-id", "Pulse Kit"] }));
+  ok(calls === 1 && ds.source === "model" && ds.intent === "work" && ds.query.startsWith("Show me the design system work") && eq(ds.topics, ["dls", recs.find((x) => x.title === "Pulse Kit").id]), "model result validated: unknown/disabled topic ids dropped, titles mapped to ids, raw words kept");
+  const dsr = q(ds.query);
+  const dsCards = pickCardIds(["resume", "minicms", "dls", "revopoc", "japan-case-study"], dsr, en, { titles, max: 3 });
+  ok(eq(dsCards.map((id) => titles.get(id)), ["Compositional Canvas", "Tangible DLS", "Pulse Kit"]), "design-system question via understanding: design-system project cards (max 3, projects first)");
+  for (const bad of [boom, async () => "not json", async () => JSON.stringify({ intent: "invent", query: "x" })]) {
+    const f = await U.understand("Show me the design system work", [], recs, bad);
+    ok(f.source === "fallback" && f.query === "Show me the design system work", "model failure / invalid output -> raw question fallback");
+  }
+  ok((await U.understand("Show me the design system work", [], recs)).query === "Show me the design system work", "no model available -> raw question");
+  // follow-ups use recent turns
+  const hist = [{ role: "user", text: "Show me the design system work" }, { role: "model", text: "He built Tangible DLS and Pulse Kit." }];
+  const more = await U.understand("tell me more", hist, recs, boom);
+  ok(more.intent === "followup" && /design system/i.test(more.query) && q(more.query).terms.includes("design system"), "'tell me more' (fallback) searches the previous topic");
+  const more2 = await U.understand("tell me more", hist, recs, model({ intent: "followup", query: "Tangible DLS design language system", topics: ["dls"] }));
+  ok(more2.intent === "followup" && q(more2.query).records.slice(0, 3).some((x) => x.id === "dls"), "'tell me more' (model) resolves to the previous project");
+  // guided offer: related, indexable, supported, not shown, title not shown
+  const cands = [...new Set(dsr.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume").map((id) => ({ id, supported: cardSupport(dsr, id).length > 0 }));
+  const dsPreferred = pickCardIds(["resume", "minicms", "dls", "revopoc", "japan-case-study"], dsr, en, { titles, max: 20 }).filter((id) => !dsCards.includes(id));
+  const offer = U.pickOffer({ preferred: dsPreferred, candidates: cands, related: [], cards: dsCards, recs, exclude: [] });
+  ok(offer && en.has(offer.id) && !dsCards.includes(offer.id) && !dsCards.map((id) => titles.get(id)).includes(offer.title) && offer.title === titles.get(offer.id), `design-system offer is a real, unshown, indexable record (${offer && offer.title})`);
+  ok(offer.id === "japan-case-study", "design-system offer: the cited design-system record that did not fit in 3 cards (International Expansion: Japan)");
+  ok(U.pickOffer({ candidates: cands, related: [], cards: dsCards, recs, exclude: [] })?.id === "ape-x-apple", "without citations the offer falls back to a supported in-context record (Apple HIG design-system adoption)");
+  ok(U.pickOffer({ candidates: [{ id: "designstyletest", supported: true }], related: [], cards: [], recs, exclude: [] })?.id === "japan-case-study", "same-title builds: the offer and its Yes resolve to one canonical record");
+  ok(U.pickOffer({ candidates: [{ id: "canvas", supported: true }, { id: "appprotoneov000", supported: true }, { id: "made-up", supported: true }, { id: "resume", supported: true }], related: [], cards: [], recs, exclude: [] }) === null, "never offers disabled, portfolio-site, unknown or resume records");
+  ok(U.pickOffer({ candidates: cands, related: [], cards: dsCards, recs, exclude: [offer.title] })?.id !== offer.id, "an offered title is not offered again");
+  ok(U.pickOffer({ candidates: [{ id: "prod-test", supported: false }], related: [], cards: [], recs, exclude: [] }) === null, "unsupported in-context records are not offered");
+  // yes chip / typed yes / decline
+  const line = U.offerLine(offer.title), yesMsg = U.yesMessage(offer.title);
+  ok(line === `Would you like to know about ${offer.title}?` && yesMsg === `Yes, show me ${offer.title}.`, "offer line + named Yes message use the exact title");
+  const afterOffer = [...hist, { role: "model", text: `Here is the work.\n\n${line}` }];
+  calls = 0;
+  const chip = await U.understand(yesMsg, [], recs, boom);
+  ok(chip.intent === "accept_offer" && chip.record_id === offer.id && calls === 0, "Yes chip message resolves to the offered record (no history needed, no model call)");
+  for (const y of ["yes", "Yeah", "sure!", "ok please", "Yes please"]) {
+    const t = await U.understand(y, afterOffer, recs, boom);
+    ok(t.intent === "accept_offer" && t.record_id === offer.id, `typed "${y}" resolves to the last offer`);
+  }
+  const card = pickCardIds([chip.record_id], { hits: chunks.filter((c) => c.record_id === chip.record_id).map((c) => ({ chunk: c, score: 1 })), records: [], terms: [] }, en, { titles });
+  ok(chunks.some((c) => c.record_id === chip.record_id) && en.has(chip.record_id), "accepted record has its own indexed evidence (direct path)");
+  ok(card.length === 0, "direct path does not depend on query-term support (route cards the accepted record directly)");
+  const no = await U.understand("no thanks", afterOffer, recs, boom);
+  ok(no.intent === "decline", "decline drops the offer");
+  const other = await U.understand("What AI work has he shipped?", afterOffer, recs, model({ intent: "work", query: "AI products shipped", topics: [] }));
+  ok(other.intent === "work" && other.record_id === null && U.offeredTitles(afterOffer).includes(offer.title), "a new question drops the offer; its title stays excluded from later offers");
+  ok((await U.understand("yes", hist, recs, boom)).intent !== "accept_offer", "bare yes with no offer is not resolved to a record");
+  ok((await U.understand("Yes, show me Made Up Project.", [], recs, boom)).intent !== "accept_offer", "Yes for a title not in the index is not accepted");
+  // Feature does not override indexable; disabled records never resolved or offered
+  const dlsOff = recsOf(M.records.map((x) => (x.id === "dls" ? { ...x, indexable: false } : x)));
+  ok((await U.understand("Yes, show me Tangible DLS.", [], dlsOff, boom)).intent !== "accept_offer" && !U.pickOffer({ candidates: [{ id: "dls", supported: true }], related: ["dls"], cards: [], recs: dlsOff, exclude: [] }), "switched-off Feature record (dls): not accepted, not offered");
+  ok(DISABLED.every((id) => !recs.some((x) => x.id === id)), "none of the 26 disabled records can be offered");
+  // fair resume-only control
+  const fr = await U.understand("Tell me about the Freeport dashboards", [], recs, model({ intent: "work", query: "Freeport-McMoRan operational dashboards", topics: [] }));
+  const frr = q(fr.query);
+  ok(eq(pickCardIds(frr.hits.map((h) => h.chunk.record_id), frr, en, { titles }), ["resume"]), "Freeport via understanding: still resume-only");
+  ok(U.pickOffer({ candidates: [...new Set(frr.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume").map((id) => ({ id, supported: cardSupport(frr, id).length > 0 && R.get(id).employer?.status !== "portfolio" })), related: [], cards: ["resume"], recs, exclude: [] }) === null, "Freeport: no unrelated offer");
+  // wiring
+  const rt = read0("app/api/chat/route.ts"), land = read0("components/Landing.tsx");
+  ok(rt.indexOf("await understand(") > 0 && rt.indexOf("await understand(") < rt.indexOf("await retrieve(") && /retrieve\(u\.query\)/.test(rt), "route: understanding runs before retrieval, on the rewritten query");
+  ok(/recordHits\(id\)/.test(rt) && /ids = enabledIds\(\)\.has\(id\) \? \[id\] : \[\]/.test(rt), "route: accepted offer takes the direct path to that record's card");
+  ok(/label: "Yes", message: yesMessage\(offer\.title\)/.test(rt) && /offerLine\(offer\.title\)/.test(rt), "route: Yes chip sends a named message; answer asks the offer question");
+  ok(/onClick=\{\(\) => ask\(s\.message\)\}/.test(land) && /\{s\.label\}/.test(land) && /offered,/.test(land), "UI: chip shows label, sends message; offered titles sent back");
+}
 // ---- staged prompts: every pool / follow-up prompt can surface a project card, except fair resume-only ones ----
 {
   const cfg = await import("../lib/config.ts");

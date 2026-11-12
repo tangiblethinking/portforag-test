@@ -41,6 +41,9 @@ export const HIRING_ASKS = [
   "Where is he based and what work setup does he prefer?",
 ];
 
+/** A suggested-message chip: visible label, and the message it sends (e.g. label "Yes", message "Yes, show me Pulse Kit."). */
+export type Chip = { label: string; message: string };
+
 export const FOLLOWUPS: Record<string, string[]> = {
   resume: ["Which projects used design systems?", "Current role details"],
   plexus: ["What skills did that involve?", "Show the design-to-code pipeline"],

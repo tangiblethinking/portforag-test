@@ -3,9 +3,12 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { ProjectCardData } from "@/lib/project-display";
 import { ProjectCardGrid, ProjectSheet, SheetShell } from "@/components/ProjectCards";
-import { HIRING_ASKS, OPENING, SCIFI } from "@/lib/config";
+import { HIRING_ASKS, OPENING, SCIFI, type Chip } from "@/lib/config";
 
-type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: string[]; ids?: string[] };
+type Msg = { role: "user" | "model"; text: string; error?: boolean; suggestions?: Chip[]; ids?: string[] };
+/** Chips from the API are { label, message } (a "Yes" chip sends a message naming the offered record); plain strings are both. */
+const toChips = (list: unknown): Chip[] =>
+  (Array.isArray(list) ? list : []).flatMap((c) => (typeof c === "string" ? [{ label: c, message: c }] : c && typeof c.label === "string" && typeof c.message === "string" ? [{ label: c.label, message: c.message }] : []));
 type Frame =
   | { kind: "resume" }
   | { kind: "about" }
@@ -81,6 +84,8 @@ export default function Landing({
   const [busy, setBusy] = useState<string | null>(null);
   const [line, setLine] = useState("");
   const [sheet, setSheet] = useState<ProjectCardData | null>(null);
+  // titles offered in this conversation ("Would you like to know about …?"); sent back so used offers never return
+  const [offered, setOffered] = useState<string[]>([]);
   const end = useRef<HTMLDivElement>(null);
   const top = stack[stack.length - 1] || null;
   const byId = useMemo(() => Object.fromEntries(projects.map((p) => [p.id, p])), [projects]);
@@ -145,20 +150,22 @@ export default function Landing({
           message: q,
           conversationId: "landing",
           history: next.slice(-6).map(({ role, text }) => ({ role, text })),
+          offered,
         }),
       });
       const j = await r.json();
+      if (r.ok && typeof j.offer?.title === "string") setOffered((o) => (o.includes(j.offer.title) ? o : [...o, j.offer.title]));
       m = r.ok
-        ? { role: "model", text: j.answer, ids: j.project_ids, suggestions: j.suggestions }
+        ? { role: "model", text: j.answer, ids: j.project_ids, suggestions: toChips(j.suggestions) }
         : {
             role: "model",
             text: j.message || "Something went wrong.",
             error: true,
-            suggestions: OPENING.slice(0, 3),
+            suggestions: toChips(OPENING.slice(0, 3)),
             ids: j.error === "all_keys_busy" ? ["resume"] : [],
           };
     } catch {
-      m = { role: "model", text: "Network hiccup. Please try again.", error: true, suggestions: OPENING.slice(0, 3) };
+      m = { role: "model", text: "Network hiccup. Please try again.", error: true, suggestions: toChips(OPENING.slice(0, 3)) };
     }
     setBusy(null);
     setMsgs((prev) => [...prev, m]);
@@ -220,8 +227,8 @@ export default function Landing({
             {m === msgs[msgs.length - 1] && m.suggestions && (
               <div className="flex flex-wrap gap-2">
                 {m.suggestions.map((s) => (
-                  <button key={s} type="button" onClick={() => ask(s)} className="min-h-11 rounded-full bg-white px-4 text-sm ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10">
-                    {s}
+                  <button key={s.message} type="button" onClick={() => ask(s.message)} title={s.label !== s.message ? s.message : undefined} aria-label={s.message} className="min-h-11 rounded-full bg-white px-4 text-sm ring-1 ring-black/10 dark:bg-neutral-900 dark:ring-white/10">
+                    {s.label}
                   </button>
                 ))}
               </div>
