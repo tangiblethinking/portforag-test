@@ -2,13 +2,17 @@
 // The understanding step only INTERPRETS the visitor's message (intent, a rewritten search query, record ids it refers
 // to); it never produces facts. Answers still come only from retrieved master records (lib/rag.ts).
 
-export type UIntent = "identity" | "work" | "project" | "followup" | "resume" | "accept_offer" | "decline" | "other";
+export type UIntent = "identity" | "work" | "project" | "open" | "followup" | "resume" | "accept_offer" | "decline" | "other";
 export type Understanding = { intent: UIntent; query: string; topics: string[]; record_id: string | null; source: "direct" | "model" | "fallback" };
 export type Turn = { role: string; text: string };
-/** Records the understanding step and offers may name: enabled (indexable), non-portfolio-site records, plus the resume. */
-export type OfferRec = { id: string; title: string };
+/** Records the understanding step and offers may name: every enabled (indexable) record that can be a card, plus the
+ * resume. `label`: a short, record-derived description (category, public address, what it is) so the understanding
+ * step can tell records that share a title apart (e.g. a live site vs the resume vs a case study). */
+export type OfferRec = { id: string; title: string; label?: string };
 
-const INTENTS: UIntent[] = ["identity", "work", "project", "followup", "resume", "other"];
+const INTENTS: UIntent[] = ["identity", "work", "project", "open", "followup", "resume", "other"];
+/** Intents whose topics are records the visitor asked for by reference (they may be shown as cards; see pickCardIds). */
+export const ASKS_FOR_RECORD: UIntent[] = ["project", "open"];
 /** Search query used for identity/overview questions: steers retrieval to the resume summary, title and roles. */
 export const IDENTITY_QUERY = "Resume of Christopher Kenreigh: who he is, his title, professional summary and experience";
 export const OFFER_PREFIX = "Would you like to know about ";
@@ -32,7 +36,7 @@ export function orderOfferRecs<T extends OfferRec & { recommendation?: string | 
   const groups = new Map<string, T[]>(); // title -> records, in order of the title's first appearance
   for (const r of recs) groups.set(r.title, [...(groups.get(r.title) || []), r]);
   const rank = (r: T) => RANK[r.recommendation || ""] ?? 2;
-  return [...groups.values()].flatMap((g) => g.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(({ r }) => ({ id: r.id, title: r.title })));
+  return [...groups.values()].flatMap((g) => g.map((r, i) => ({ r, i })).sort((a, b) => rank(a.r) - rank(b.r) || a.i - b.i).map(({ r }) => ({ id: r.id, title: r.title, ...(r.label ? { label: r.label } : {}) })));
 }
 
 /** The offer made in the most recent model turn (exact indexable title), or null. */
@@ -73,12 +77,12 @@ export function understandPrompt(message: string, history: Turn[], recs: OfferRe
   const conv = history.slice(-4).map((h) => `${h.role === "user" ? "visitor" : "assistant"}: ${h.text.replace(/\s+/g, " ").slice(0, 300)}`).join("\n") || "(none)";
   return [
     "You interpret a visitor's chat message to the portfolio assistant of Christopher Kenreigh, a product designer. You do NOT answer it.",
-    'Return JSON only: {"intent": "identity"|"work"|"project"|"followup"|"resume"|"other", "query": string, "topics": string[]}.',
-    "- intent: identity = who he is / what he does / overview of him; work = a kind of work or skill; project = a specific project; followup = continues the previous turn (\"tell me more\", \"that\"); resume = his resume, roles, education; other = anything else.",
+    'Return JSON only: {"intent": "identity"|"work"|"project"|"open"|"followup"|"resume"|"other", "query": string, "topics": string[]}.',
+    "- intent: identity = who he is / what he does / overview of him; work = a kind of work or skill; project = a question about a specific project; open = the visitor wants to see, open, visit or pull up a specific site, page, project or document; followup = continues the previous turn (\"tell me more\", \"that\"); resume = his resume, roles, education; other = anything else.",
     '- query: a short search query in plain words with pronouns and shorthand resolved from the conversation ("he"/"him" = Christopher Kenreigh; "that"/"it" = what the previous turn was about). Only rephrase what was asked; add no facts.',
-    "- topics: ids from the list below that the message (or the turn it follows up) refers to; [] if none. Never invent ids.",
-    "Records (id | title):",
-    ...recs.map((r) => `${r.id} | ${r.title}`),
+    "- topics: ids from the list below that the message (or the turn it follows up) refers to; [] if none. Never invent ids. For project/open, name the record(s) the visitor means, using the descriptions to tell records with the same title apart (prefer the one whose description matches what was asked).",
+    "Records (id | title | description):",
+    ...recs.map((r) => `${r.id} | ${r.title}${r.label ? ` | ${r.label}` : ""}`),
     "Conversation (most recent last):",
     conv,
     `Message: ${message}`,
@@ -118,14 +122,16 @@ export async function understand(message: string, history: Turn[], recs: OfferRe
 /**
  * Guided offer: one related record to offer next. Candidates: supported records the answer cited/named that did not fit
  * in the cards, then this turn's in-context records that the question supports (hit order), then records related to the
- * answer's topic. Only enabled, non-portfolio-site records with a known title; never the resume,
- * a record shown in this answer's cards (or sharing a shown card's title), or anything offered before.
+ * answer's topic. Only enabled records with a known title (no record class is excluded); never the resume or a
+ * restatement of it, a record shown in this answer's cards (or sharing a shown card's title, or restating one —
+ * `restates`, the same rule the cards use), or anything offered before.
  */
-export function pickOffer(opts: { preferred?: string[]; candidates: { id: string; supported: boolean }[]; related: string[]; cards: string[]; recs: OfferRec[]; exclude: string[] }): OfferRec | null {
+export function pickOffer(opts: { preferred?: string[]; candidates: { id: string; supported: boolean }[]; related: string[]; cards: string[]; recs: OfferRec[]; exclude: string[]; restates?: (a: string, b: string) => boolean }): OfferRec | null {
   const rec = new Map(opts.recs.map((r) => [r.id, r]));
   const shownTitles = new Set(opts.cards.map((id) => rec.get(id)?.title.toLowerCase()).filter(Boolean));
   const ex = new Set(opts.exclude.map((s) => s.toLowerCase()));
-  const ok = (id: string) => { const r = rec.get(id); return !!r && id !== "resume" && !opts.cards.includes(id) && !shownTitles.has(r.title.toLowerCase()) && !ex.has(r.title.toLowerCase()) && !ex.has(id.toLowerCase()); };
+  const re = opts.restates || (() => false);
+  const ok = (id: string) => { const r = rec.get(id); return !!r && id !== "resume" && !re(id, "resume") && !opts.cards.includes(id) && !opts.cards.some((c) => re(id, c)) && !shownTitles.has(r.title.toLowerCase()) && !ex.has(r.title.toLowerCase()) && !ex.has(id.toLowerCase()); };
   // in-context records whose own evidence supports the question first, then records related to the answer's topic;
   // unsupported in-context records are never offered (weakly related)
   // preferred: supported records the answer itself cited or named but that did not fit in the cards

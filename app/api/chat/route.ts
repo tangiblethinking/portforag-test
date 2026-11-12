@@ -1,7 +1,7 @@
 import { retrieve, answer, refine, interpretModel, recordHits } from "@/lib/rag";
-import { cardSupport, mentionedIds, pickCardIds, type Hit, type SearchResult } from "@/lib/retrieval";
-import { enabledIds, enabledRecords, getMaster, resolveId } from "@/lib/master";
-import { understand, offeredTitles, orderOfferRecs, pickOffer, offerLine, yesMessage, type OfferRec, type Understanding } from "@/lib/understand";
+import { cardSupport, mentionedIds, pickCardIds, restatementGroups, restates, type Hit, type SearchResult } from "@/lib/retrieval";
+import { displayCardIds, enabledIds, enabledRecords, getMaster, recordLabel, resolveId } from "@/lib/master";
+import { understand, offeredTitles, orderOfferRecs, pickOffer, offerLine, yesMessage, ASKS_FOR_RECORD, type OfferRec, type Understanding } from "@/lib/understand";
 import { KeyTimeoutError, NoKeyError } from "@/lib/keys";
 import { FOLLOWUPS, LOADING, intent, type Chip } from "@/lib/config";
 export const runtime = "nodejs";
@@ -11,12 +11,16 @@ const BUDGET_MS = 55_000;
 const hits = new Map<string, number[]>(); // per-instance rate limit
 function limited(ip: string) { const now = Date.now(); const a = (hits.get(ip) || []).filter(t => now - t < 60_000); a.push(now); hits.set(ip, a); return a.length > 12; }
 
-/** Records the understanding step and offers may name: enabled (indexable) records, never portfolio-site records. */
+/** Records the understanding step and offers may name: every enabled (indexable) record, each with a short
+ * distinguishing label from its own fields. No record class is excluded. */
 function offerRecs(): OfferRec[] {
-  return orderOfferRecs(enabledRecords().filter((r) => r.kind === "resume" || r.employer?.status !== "portfolio").map((r) => ({ id: r.id, title: r.title, recommendation: r.recommendation })));
+  return orderOfferRecs(enabledRecords().map((r) => ({ id: r.id, title: r.title, label: recordLabel(r), recommendation: r.recommendation })));
 }
+/** Restatement rule for offers: the same groups the chunks carry (lib/retrieval.ts restatementGroups). */
+let groups: Map<string, string> | null = null;
+const sameRecord = (a: string, b: string) => restates((groups ??= restatementGroups(getMaster().records)), a, b);
 /** Records related to topic records: same named employer first, then same family, in master order (offers are
- * further limited to enabled, non-portfolio records via offerRecs). */
+ * further limited to enabled records via offerRecs and the restatement rule in pickOffer). */
 function relatedTo(ids: string[]): string[] {
   const recs = getMaster().records;
   const src = ids.map((id) => recs.find((r) => r.id === id)).filter((r): r is NonNullable<typeof r> => !!r);
@@ -83,8 +87,11 @@ export async function POST(req: Request) {
       const cited = (m?.[1] || "").split(",").map(s => resolveId(s.replace(/[*`\[\]]/g, "").trim())).filter((x): x is string => !!x);
       const titles = new Map(getMaster().records.map((r) => [r.id, r.title]));
       const mentioned = mentionedIds(draft, found, titles); // first-pass text, so refinement cannot change cards
-      ids = pickCardIds(cited, found, enabledIds(), { includeResume: intent(q) === "resume" || u.intent === "identity" || u.intent === "resume", mentioned, titles, max: 3 }); // the chat shows at most 3 cards
-      preferred = pickCardIds(cited, found, enabledIds(), { mentioned, titles, max: 20 }).filter((id) => !ids.includes(id));
+      // records the visitor asked for by reference (a specific project, or "show me / open this")
+      const asked = ASKS_FOR_RECORD.includes(u.intent) ? u.topics : [];
+      const cardOpts = { mentioned, titles, asked };
+      ids = pickCardIds(cited, found, enabledIds(), { ...cardOpts, includeResume: intent(q) === "resume" || u.intent === "identity" || u.intent === "resume", max: 3 }); // the chat shows at most 3 cards
+      preferred = pickCardIds(cited, found, enabledIds(), { ...cardOpts, max: 20 }).filter((id) => !ids.includes(id));
       sources = [...new Set(found.hits.map(h => h.chunk.record_id))];
       mode = base.mode;
       // identity questions search the resume wording ("resume", "title" …), which says nothing about which project to
@@ -94,11 +101,11 @@ export async function POST(req: Request) {
       related = u.intent === "identity" ? currentWork() : relatedTo(firstProject ? [firstProject] : u.topics);
     }
     // 3. Guided offer: one related, indexable, not-shown, not-yet-offered record by its exact title.
-    const offer = pickOffer({ preferred, candidates, related, cards: ids, recs, exclude });
+    const offer = pickOffer({ preferred, candidates, related, cards: ids, recs, exclude, restates: sameRecord });
     if (offer) text = `${text}\n\n${offerLine(offer.title)}`;
     const key = chipKey(u, q, u.intent === "accept_offer" ? titleOf.get(u.record_id || "") : undefined);
     const suggestions: Chip[] = [...(offer ? [{ label: "Yes", message: yesMessage(offer.title) }] : []), ...chips(FOLLOWUPS[key] || FOLLOWUPS.default)];
-    return Response.json({ answer: text, project_ids: ids, sources, retrieval: mode, understanding, offer: offer ? { record_id: offer.id, title: offer.title } : null, suggestions, loading: LOADING[key] });
+    return Response.json({ answer: text, project_ids: displayCardIds(ids), sources, retrieval: mode, understanding, offer: offer ? { record_id: offer.id, title: offer.title } : null, suggestions, loading: LOADING[key] });
   } catch (e) {
     if (e instanceof NoKeyError) return Response.json({ error: "all_keys_busy", message: "I’m catching my breath — the AI is busy right now. Try a suggestion below or open the resume." }, { status: 503 });
     console.error(e);

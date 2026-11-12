@@ -88,15 +88,39 @@ export function recentCards(items: RecentWorkItem[]): ProjectCardData[] {
   return out;
 }
 
+/** Public address of a record: a non-vercel.app alias URL that resolves to it (e.g. a uxapex.com route), else its
+ * live URL; null if neither is recorded. Only recorded URLs are used. */
+export function publicUrl(r: MasterRecord): string | null {
+  const alias = Object.entries(getMaster().aliases.urls).find(([u, id]) => id === r.id && !/\.vercel\.app/.test(u))?.[0];
+  return alias || r.deployment.live_url || null;
+}
+/** Short distinguishing label for the understanding step's catalog, built only from the record's own fields:
+ * category (family), public address, and the start of its description. */
+export function recordLabel(r: MasterRecord): string {
+  if (r.kind === "resume") return "his resume: roles, experience, skills and education";
+  const url = publicUrl(r)?.replace(/^https?:\/\/(www\.)?/, "");
+  const d = (r.description || "").replace(/\s+/g, " ").trim();
+  const desc = d.length > 110 ? `${d.slice(0, 110).replace(/\s+\S*$/, "")}…` : d;
+  return [r.family, url ? `live at ${url}` : null, desc || null].filter(Boolean).join("; ");
+}
+
 /** Where the traditional portfolio is served (the uxapex.com /portfolio route); the record's own live_url is unchanged. */
 export const PORTFOLIO_URL = "https://uxapex.com/portfolio";
 export const PORTFOLIO_CARD_ID = "traditional-portfolio";
+/** The master record behind the traditional-portfolio card. */
+export const PORTFOLIO_RECORD_ID = "portfoprod";
 /**
- * The traditional-portfolio card for the header "Portfolio" item and the chat's failure fallback: title, summary,
- * company, date, skills and capture from the master `portfoprod` record; only the display URL is the uxapex.com route.
- * An explicit exception to "portfolio-site records are not chat cards" — normal retrieval/cards still exclude them.
+ * The traditional-portfolio card for the header "Portfolio" item, the chat's failure fallback, and any chat answer
+ * whose cards include the `portfoprod` record (displayCardIds): title, summary, company, date, skills and capture
+ * from that record; only the display URL is the uxapex.com route. It opens the dedicated PortfolioSheet.
  */
 export function portfolioCard(): ProjectCardData | null {
-  const r = getMaster().records.find((x) => x.id === "portfoprod");
+  const r = getMaster().records.find((x) => x.id === PORTFOLIO_RECORD_ID);
   return r ? { ...recordToCard(r), id: PORTFOLIO_CARD_ID, liveUrl: PORTFOLIO_URL } : null;
+}
+
+/** Chat card ids -> display ids: a record that has a dedicated display card (the traditional portfolio) is shown as
+ * that card; every other id is unchanged. Display mapping only — selection happens in pickCardIds. */
+export function displayCardIds(ids: string[]): string[] {
+  return ids.map((id) => (id === PORTFOLIO_RECORD_ID && portfolioCard() ? PORTFOLIO_CARD_ID : id));
 }

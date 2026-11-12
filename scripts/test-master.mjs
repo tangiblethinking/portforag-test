@@ -5,7 +5,7 @@ import os from "node:os";
 import path from "node:path";
 import crypto from "node:crypto";
 import { execFileSync } from "node:child_process";
-import { buildChunks, chunksVersion, search, pickCardIds, detectIntent, cardSupport, mentionedIds } from "../lib/retrieval.ts";
+import { buildChunks, chunksVersion, search, pickCardIds, detectIntent, cardSupport, mentionedIds, restatementGroups, restates, aboutPerson } from "../lib/retrieval.ts";
 import { validateMaster } from "./master-validate.mjs";
 
 let pass = 0, fail = 0;
@@ -180,9 +180,9 @@ ok(chunks.length === 60 + 3 + res.resume.roles.length && chunks.filter((c) => c.
   const cards = pickCardIds(["resume", "appprotoneov006pnu"], r, all, { mentioned, titles });
   ok(cards.includes("virtuallabs") && (cards.includes("moderncheckout") || cards.includes("appprotocartonovo")) && !cards.includes("sitetest") && !cards.includes("appprotoneov006pnu"), "industries: cards = named Cart/Checkout + Virtual Labs; portfolio-site Live Metallurgy source and unrelated sitetest absent");
   ok(!(cards.includes("moderncheckout") && cards.includes("appprotocartonovo")), "duplicate Cart and Checkout titles collapse to one card");
-  ok(cards.every((id) => id === "resume" || (R.get(id).employer.status !== "portfolio" && cardSupport(r, id).length > 0)), "industries: every card has its own substantive evidence");
+  ok(cards.every((id) => id === "resume" || cardSupport(r, id).length > 0), "industries: every card has its own substantive evidence");
   const cited = pickCardIds(["resume", "virtuallabs", "html-test", "appprotoneov006pnu"], r, all, { titles });
-  ok(!cited.includes("appprotoneov006pnu") && cited.includes("virtuallabs") && cited.includes("resume"), "cited portfolio-site record rejected; supported citations kept");
+  ok(!cited.includes("appprotoneov006pnu") && cited.includes("virtuallabs") && cited.includes("resume"), "cited disabled record rejected; supported citations kept");
   console.log("  industries cards:", cards.join(", "), "| cited kept:", cited.join(", "));
 }
 {
@@ -190,7 +190,7 @@ ok(chunks.length === 60 + 3 + res.resume.roles.length && chunks.filter((c) => c.
   const ctx = r.hits.map((h) => h.chunk.text).join(" ");
   ok(r.intent === "employers" && ["Plexus Worldwide", "Freeport-McMoRan", "OpenTech Alliance", "Siemens", "Glynlyon Inc"].every((c) => ctx.includes(c)), "employers: all resume employers in context");
   ok(r.hits.some((h) => R.get(h.chunk.record_id)?.employer?.status === "named"), "employers: named-employer project records in context");
-  ok(r.hits.filter((h) => h.chunk.group === "portfolio").length <= 2, "employers: portfolio-site records capped");
+  ok(!r.hits.some((h) => h.chunk.record_id !== "resume" && h.chunk.same === "resume"), "employers: resume in context, so its restatements (records titled with his name and their copies) add no context");
 }
 {
   const r = q("What skills does he have?");
@@ -249,7 +249,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   ok(R.get("dls").recommendation === "Feature" && !rOff.hits.some((h) => h.chunk.record_id === "dls") && !pickCardIds(["dls"], rOff, new Set(dlsOff.filter((x) => x.indexable).map((x) => x.id)), { titles }).includes("dls"), "Feature dls switched off: not retrieved, not carded");
   // fair resume-only control: Freeport exists only in the resume and portfolio-site records
   const fr = q("Tell me about the Freeport dashboards");
-  ok(eq(pickCardIds(fr.hits.map((h) => h.chunk.record_id), fr, en, { titles }), ["resume"]), "Freeport dashboards: resume-only (portfolio-site records never carded)");
+  ok(eq(pickCardIds(fr.hits.map((h) => h.chunk.record_id), fr, en, { titles }), ["resume"]), "Freeport dashboards: resume-only (restatements of the resume collapse into it)");
   // the two screenshot questions (original wording) can produce project cards when project evidence exists
   const lead = q("Can he lead a design system across teams?");
   ok(pickCardIds(["resume", "revopoc"], lead, en, { titles }).includes("revopoc"), "original 'lead a design system' question: Pulse Kit card possible");
@@ -261,7 +261,9 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
 // ---- understanding step + guided offers (lib/understand.ts; model call mocked) ----
 {
   const U = await import("../lib/understand.ts");
-  const recsOf = (records) => U.orderOfferRecs(records.filter((r) => r.indexable && (r.kind === "resume" || r.employer?.status !== "portfolio")).map((r) => ({ id: r.id, title: r.title, recommendation: r.recommendation })));
+  const MS = await import("../lib/master.ts");
+  const recsOf = (records) => U.orderOfferRecs(records.filter((r) => r.indexable).map((r) => ({ id: r.id, title: r.title, label: MS.recordLabel(r), recommendation: r.recommendation })));
+  const groups = restatementGroups(M.records), same = (a, b) => restates(groups, a, b);
   const recs = recsOf(M.records);
   const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
   const titles = new Map(M.records.map((x) => [x.id, x.title]));
@@ -304,7 +306,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   ok(offer.id === "japan-case-study", "design-system offer: the cited design-system record that did not fit in 3 cards (International Expansion: Japan)");
   ok(U.pickOffer({ candidates: cands, related: [], cards: dsCards, recs, exclude: [] })?.id === "ape-x-apple", "without citations the offer falls back to a supported in-context record (Apple HIG design-system adoption)");
   ok(U.pickOffer({ candidates: [{ id: "designstyletest", supported: true }], related: [], cards: [], recs, exclude: [] })?.id === "japan-case-study", "same-title builds: the offer and its Yes resolve to one canonical record");
-  ok(U.pickOffer({ candidates: [{ id: "canvas", supported: true }, { id: "appprotoneov000", supported: true }, { id: "made-up", supported: true }, { id: "resume", supported: true }], related: [], cards: [], recs, exclude: [] }) === null, "never offers disabled, portfolio-site, unknown or resume records");
+  ok(U.pickOffer({ candidates: [{ id: "canvas", supported: true }, { id: "appprotoneov000", supported: true }, { id: "made-up", supported: true }, { id: "resume", supported: true }], related: [], cards: [], recs, exclude: [], restates: same }) === null, "never offers disabled, unknown or resume records, or a restatement of the resume");
   ok(U.pickOffer({ candidates: cands, related: [], cards: dsCards, recs, exclude: [offer.title] })?.id !== offer.id, "an offered title is not offered again");
   ok(U.pickOffer({ candidates: [{ id: "prod-test", supported: false }], related: [], cards: [], recs, exclude: [] }) === null, "unsupported in-context records are not offered");
   // yes chip / typed yes / decline
@@ -335,7 +337,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   const fr = await U.understand("Tell me about the Freeport dashboards", [], recs, model({ intent: "work", query: "Freeport-McMoRan operational dashboards", topics: [] }));
   const frr = q(fr.query);
   ok(eq(pickCardIds(frr.hits.map((h) => h.chunk.record_id), frr, en, { titles }), ["resume"]), "Freeport via understanding: still resume-only");
-  ok(U.pickOffer({ candidates: [...new Set(frr.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume").map((id) => ({ id, supported: cardSupport(frr, id).length > 0 && R.get(id).employer?.status !== "portfolio" })), related: [], cards: ["resume"], recs, exclude: [] }) === null, "Freeport: no unrelated offer");
+  ok(U.pickOffer({ candidates: [...new Set(frr.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume").map((id) => ({ id, supported: cardSupport(frr, id).length > 0 })), related: [], cards: ["resume"], recs, exclude: [], restates: same }) === null, "Freeport: no unrelated offer");
   // wiring
   const rt = read0("app/api/chat/route.ts"), land = read0("components/Landing.tsx");
   ok(rt.indexOf("await understand(") > 0 && rt.indexOf("await understand(") < rt.indexOf("await retrieve(") && /retrieve\(u\.query\)/.test(rt), "route: understanding runs before retrieval, on the rewritten query");
@@ -350,7 +352,7 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   const RESUME_ONLY = ["Who is Christopher Kenreigh?", "Tell me about the Freeport dashboards", "Current role details", "Pull up the resume"];
   const prompts = [...new Set([...cfg.OPENING, ...cfg.HIRING_ASKS, ...Object.values(cfg.FOLLOWUPS).flat()])];
   const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
-  const cardable = (s) => { const r = q(s); return [...new Set(r.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume" && en.has(id) && r.hits.find((h) => h.chunk.record_id === id).chunk.group !== "portfolio" && cardSupport(r, id).length); };
+  const cardable = (s) => { const r = q(s); return [...new Set(r.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume" && en.has(id) && cardSupport(r, id).length); };
   const none = prompts.filter((s) => !RESUME_ONLY.includes(s) && !cardable(s).length);
   ok(none.length === 0, `every staged prompt has supported project evidence (none: ${none.join(" | ")})`);
   ok(!prompts.some((s) => ["Can he lead a design system across teams?", "Has he collaborated closely with engineering and PM?", "Who is this guy?", "Show current work"].includes(s)), "resume-only staged prompts reworded");
@@ -461,8 +463,74 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   ok(pc.id !== "portfoprod" && !R.has(pc.id), "portfolio card has its own display id (never returned by retrieval)");
   const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
   const titles = new Map(M.records.map((x) => [x.id, x.title]));
-  const pq = q("Christopher Kenreigh portfolio site uxapex Director of UX & Product Design");
-  ok(pq.hits.some((h) => h.chunk.record_id === "portfoprod") && !pickCardIds(["portfoprod"], pq, en, { titles }).includes("portfoprod"), "normal path: portfolio-site records still never become chat cards");
+  // ---- general answer + card pipeline (Nov 12, 2026): no record class banned, restatement rule, asked-for records ----
+  const U = await import("../lib/understand.ts");
+  const MS = await import("../lib/master.ts");
+  const SITES = M.records.filter((r) => r.indexable && r.employer?.status === "portfolio").map((r) => r.id);
+  const recs = U.orderOfferRecs(M.records.filter((r) => r.indexable).map((r) => ({ id: r.id, title: r.title, label: MS.recordLabel(r), recommendation: r.recommendation })));
+  const groups = restatementGroups(M.records), same = (a, b) => restates(groups, a, b);
+  // understand: catalog = every indexable record, each with a distinguishing label from its own fields
+  ok(SITES.length === 10 && recs.length === en.size && SITES.every((id) => recs.some((x) => x.id === id)), "understand catalog includes every indexable record (portfolio-site records no longer omitted as a class)");
+  const prompt = U.understandPrompt("Open his portfolio website", [], recs);
+  ok(recs.every((x) => x.label && prompt.includes(`${x.id} | ${x.title} | ${x.label}`)), "understand catalog: id | title | label for every record");
+  const ck = recs.filter((x) => x.title === "Christopher Kenreigh");
+  ok(ck.length === 4 && new Set(ck.map((x) => x.label)).size === 4, "records sharing a title get distinct labels");
+  ok(recs.find((x) => x.id === "portfoprod").label.includes("live at uxapex.com/portfolio") && recs.find((x) => x.id === "portfocorrect").label.includes("live at portfocorrect.vercel.app") && /^his resume/.test(recs.find((x) => x.id === "resume").label), "labels say which is the live uxapex.com/portfolio site, which a copy, which the resume");
+  ok(recs.every((x) => { const r = R.get(x.id); return x.id === "resume" || [r.family, MS.publicUrl(r)?.replace(/^https?:\/\/(www\.)?/, ""), (r.description || "").slice(0, 40)].filter(Boolean).every((p) => x.label.includes(p)); }), "labels use only the record's own family, recorded URL and description (no invented facts)");
+  ok(/open = the visitor wants to see, open, visit or pull up a specific site, page, project or document/.test(prompt) && U.ASKS_FOR_RECORD.includes("open") && U.ASKS_FOR_RECORD.includes("project"), "general show/open intent in the understanding step");
+  // general show/open intent names a referenced record — two different fixtures (same code path)
+  const routeLike = async (msg, modelOut, cited) => {
+    const u = await U.understand(msg, [], recs, async () => JSON.stringify(modelOut));
+    const base = q(u.query), have = new Set(base.hits.map((h) => h.chunk.record_id));
+    const extra = u.topics.filter((id) => id !== "resume" && !have.has(id)).flatMap((id) => chunks.filter((c) => c.record_id === id).map((chunk) => ({ chunk, score: 0 })));
+    const found = { ...base, hits: [...base.hits, ...extra] };
+    const asked = U.ASKS_FOR_RECORD.includes(u.intent) ? u.topics : [];
+    return { u, found, ids: pickCardIds(cited, found, en, { titles, asked, mentioned: mentionedIds("Christopher Kenreigh", found, titles), max: 3 }) };
+  };
+  const tp = await routeLike("Open his portfolio website", { intent: "open", query: "Christopher Kenreigh traditional portfolio website", topics: ["portfoprod"] }, ["resume", "portfoprod"]);
+  ok(tp.u.intent === "open" && eq(tp.u.topics, ["portfoprod"]) && tp.found.hits.some((h) => h.chunk.record_id === "portfoprod"), "open intent: the named record is added to the context");
+  ok(tp.ids[0] === "portfoprod" && !tp.ids.includes("resume") && !tp.ids.some((id) => id !== "portfoprod" && same(id, "portfoprod")), "open the traditional portfolio site: that record is the card; the resume and other copies collapse into it");
+  const disp = MS.displayCardIds(tp.ids), pcard = MS.portfolioCard();
+  ok(disp[0] === "traditional-portfolio" && pcard.id === disp[0] && pcard.liveUrl === "https://uxapex.com/portfolio", "a selected portfoprod maps to the special traditional-portfolio card (https://uxapex.com/portfolio, PortfolioSheet)");
+  ok(eq(MS.displayCardIds(["virtuallabs", "resume", "dls"]), ["virtuallabs", "resume", "dls"]), "display mapping leaves every other card id unchanged (ProjectSheet)");
+  const vl = await routeLike("Pull up the Odysseyware labs site", { intent: "open", query: "Odysseyware Virtual Science Labs site", topics: ["virtuallabs"] }, []);
+  ok(vl.u.intent === "open" && vl.ids[0] === "virtuallabs" && eq(MS.displayCardIds(vl.ids), vl.ids), "open intent is general: a second fixture (Virtual Labs) is selected the same way, as a regular card");
+  const ap = await routeLike("Show me the chat portfolio app itself", { intent: "open", query: "chat-based portfolio app", topics: ["portforag-test"] }, ["resume"]);
+  ok(ap.ids[0] === "portforag-test", "open intent: another record titled with his name (this chat app) can be asked for");
+  // enabled-only: an asked-for disabled record is never a card
+  const offSet = new Set([...en].filter((id) => id !== "portfoprod"));
+  ok(!pickCardIds([], tp.found, offSet, { titles, asked: ["portfoprod"] }).includes("portfoprod"), "asked-for record switched off (indexable false): not carded");
+  // retrieve: no class drop/downweight by employer status
+  const resOffChunks = buildChunks(M.records.map((r) => (r.id === "resume" ? { ...r, indexable: false } : r)));
+  const relabel = resOffChunks.map((c) => (c.group === "portfolio" ? { ...c, group: "named" } : c));
+  const sq = "Christopher Kenreigh portfolio site uxapex Director of UX & Product Design";
+  const a1 = search(resOffChunks, sq, {}), a2 = search(relabel, sq, {});
+  ok(a1.hits.some((h) => SITES.includes(h.chunk.record_id)) && eq(a1.hits.map((h) => `${h.chunk.id}:${h.score}`), a2.hits.map((h) => `${h.chunk.id}:${h.score}`)), "retrieval: employer status (portfolio) does not change any score or hit");
+  for (const f of ["lib/retrieval.ts", "lib/understand.ts", "app/api/chat/route.ts", "lib/rag.ts"]) {
+    const src = fs.readFileSync(f, "utf8");
+    ok(!/(group|status)\s*[!=]==?\s*"portfolio"|PORTFOLIO_(WEIGHT|CAP)/.test(src), `${f}: no class ban by employer status / group "portfolio"`);
+    ok(!src.split("\n").some((l) => /portfolio/i.test(l) && /\/[^/\n]*portfolio[^/\n]*\/[a-z]*\.(test|exec)\(|match\(\/[^/\n]*portfolio|RegExp\([^)]*portfolio|includes\(["'`][^"'`]*portfolio/i.test(l)), `${f}: no prompt-language branch on the word "portfolio"`);
+  }
+  // restatement rule (general): groups by shared title, near-copy description, or being about the person
+  ok(SITES.every((id) => same(id, "resume")) && aboutPerson("Christopher Kenreigh — Director of UX & Product Design | USA · Remote-Ready", "Christopher Kenreigh") && !aboutPerson("International Expansion: Japan — Christopher Kenreigh", "Christopher Kenreigh"), "restatement: records titled with his name (and near-copies) restate the resume; a case study that merely mentions him does not");
+  ok(same("minicms", "minicms2") && same("pvoc", "revopoc") && same("appprotoneov000", "appprotoneov001ai") && !same("interview", "testrecruiter") && !same("dls", "minicms") && !same("japan-case-study", "resume"), "restatement: same title / near-copy description collapse; distinct records stay distinct");
+  ok(chunks.every((c) => c.same === (groups.get(c.record_id) ?? c.record_id)), "chunks carry their restatement group");
+  const allHits = { hits: chunks.map((chunk) => ({ chunk, score: 1 })), records: [], terms: ["design system"] };
+  ok(eq(pickCardIds(["minicms", "minicms2", "dls", "revopoc", "pvoc"], allHits, en, { titles }), ["minicms", "dls", "revopoc"]), "cards: restatements of an already-selected record collapse to the first");
+  ok(pickCardIds(["minicms", "dls", "revopoc", "japan-case-study", "ape-x-apple"], allHits, en, { titles, max: 3 }).length === 3, "cards: cap 3");
+  // bio / "who is he": a pile of Christopher Kenreigh site cards collapses into the resume
+  const idq = q(U.IDENTITY_QUERY);
+  ok(!idq.hits.some((h) => SITES.includes(h.chunk.record_id)), "who is he: retrieval context is the resume, not its restatements");
+  const bio = { ...idq, hits: [...idq.hits, ...chunks.filter((c) => SITES.includes(c.record_id) || c.record_id === "portforag-test").map((chunk) => ({ chunk, score: 0 }))] };
+  const bioCards = pickCardIds(["resume", "portfoprod", "portfocorrect", "appprotoneov002", "testportfo", "appprotoneov000"], bio, en, { titles, includeResume: true, mentioned: mentionedIds("Christopher Kenreigh is a Lead UX Designer.", bio, titles), max: 3 });
+  ok(eq(bioCards, ["resume"]), "who is he (model cites several Christopher Kenreigh sites): the Resume card only, no near-identical site cards");
+  // offers: no class ban; skip shown / offered / restatements
+  const rel = restatementGroups(M.records.map((r) => (r.id === "virtuallabs" ? { ...r, employer: { ...r.employer, status: "portfolio" } } : r)));
+  ok(U.pickOffer({ candidates: [{ id: "virtuallabs", supported: true }], related: [], cards: [], recs, exclude: [], restates: (a, b) => restates(rel, a, b) })?.id === "virtuallabs", "offers: a record is not excluded for its employer status (virtuallabs relabelled portfolio is still offered)");
+  ok(U.pickOffer({ candidates: [{ id: "appprotoneov001ai", supported: true }, { id: "portfocorrect", supported: true }], related: [], cards: ["appprotoneov000"], recs, exclude: [], restates: same }) === null, "offers: a restatement of a shown card (or of the resume) is not offered");
+  ok(U.pickOffer({ candidates: [{ id: "minicms2", supported: true }, { id: "virtuallabs", supported: true }], related: [], cards: ["minicms"], recs, exclude: [], restates: same })?.id === "virtuallabs" && U.pickOffer({ candidates: [{ id: "virtuallabs", supported: true }], related: [], cards: [], recs, exclude: [titles.get("virtuallabs")], restates: same }) === null, "offers: already shown / already offered still skipped");
+  const rt2 = fs.readFileSync("app/api/chat/route.ts", "utf8");
+  ok(/project_ids: displayCardIds\(ids\)/.test(rt2) && /restates: sameRecord/.test(rt2) && /asked = ASKS_FOR_RECORD\.includes\(u\.intent\) \? u\.topics : \[\]/.test(rt2) && /enabledRecords\(\)\.map\(\(r\) => \(\{ id: r\.id, title: r\.title, label: recordLabel\(r\)/.test(rt2), "route wiring: full labelled catalog, asked-for records, restatement rule for offers, portfoprod shown as the special card");
   const land = read0("components/Landing.tsx");
   ok(/onClick=\{\(\) => setPortfolioOpen\(true\)\}[\s\S]*?Portfolio/.test(land) && /<PortfolioSheet card=\{portfolioOpen \? portfolio : null\}/.test(land) && /<ProjectSheet card=\{sheet\}/.test(land), "header Portfolio opens the dedicated PortfolioSheet; other cards keep ProjectSheet");
   ok(/if \(portfolio && p\.id === portfolio\.id\) \{\s*setPortfolioOpen\(true\);/.test(land), "chat failure card (portfolio) opens the dedicated PortfolioSheet");

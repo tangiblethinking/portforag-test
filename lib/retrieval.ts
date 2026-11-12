@@ -28,7 +28,8 @@ export type MasterRecordLite = {
 };
 /** `evidence`: the record's own substantive fields (named employer, description, keywords, functional keywords, skills) — the text a
  * card must match on its own; resume restatements in experience/why/note text do not qualify a card. */
-export type Chunk = { id: string; record_id: string; part: string; text: string; group: string; evidence: string };
+/** `same`: the chunk's restatement group (see restatementGroups) — records that restate one another share it. */
+export type Chunk = { id: string; record_id: string; part: string; text: string; group: string; evidence: string; same?: string };
 export type Hit = { chunk: Chunk; score: number };
 export type Intent = "industries" | "employers" | "skills" | "capabilities" | "resume" | "general";
 
@@ -59,6 +60,7 @@ function employerLine(r: MasterRecordLite): string {
 /** Chunks for enabled records only. Repository records stay whole (no truncation); the resume is split by section/role. */
 export function buildChunks(records: MasterRecordLite[]): Chunk[] {
   const out: Chunk[] = [];
+  const groups = restatementGroups(records);
   for (const r of records) {
     if (!r.indexable) continue;
     if (r.kind === "resume" && r.resume) {
@@ -86,6 +88,7 @@ export function buildChunks(records: MasterRecordLite[]): Chunk[] {
     const evidence = [named, r.description || "", r.keywords.join(", "), r.functional_keywords.map((k) => k.term).join(", "), r.skills.join(", ")].join("\n");
     out.push({ id: r.id, record_id: r.id, group: r.employer?.status || "unknown", part: "record", text: lines.filter(Boolean).join("\n"), evidence });
   }
+  for (const c of out) c.same = groups.get(c.record_id) ?? c.record_id;
   return out;
 }
 
@@ -97,7 +100,6 @@ export function chunksVersion(chunks: Chunk[]): string {
   return `fnv1a-${chunks.length}-${h.toString(16)}`;
 }
 
-const PORTFOLIO_WEIGHT = 0.6, PORTFOLIO_CAP = 2;
 // Words too generic to show that a record is about the question on its own.
 const GENERIC = new Set(tokenize("design designed designer ux ui product work worked project build built experience christopher kenreigh portfolio case study page site web app application system user"));
 
@@ -160,25 +162,31 @@ export function search(chunks: Chunk[], query: string, opts: SearchOptions = {})
       const idf = Math.log(1 + (N - n + 0.5) / (n + 0.5));
       s += w * idf * ((f * 2.2) / (f + 1.2 * (1 - 0.75 + (0.75 * d.length) / avg)));
     }
-    // Portfolio-site records restate the resume across many near-identical repos: demote and cap them so they do
-    // not crowd out the resume itself and the project work it describes.
-    return { chunk, score: chunk.group === "portfolio" ? s * PORTFOLIO_WEIGHT : s };
+    // No record class is dropped or demoted here (e.g. by employer status): near-identical records are handled at
+    // card/offer time by the restatement rule (restates / pickCardIds).
+    return { chunk, score: s };
   });
   // Broad questions about the person: the resume parts that answer them are always in context (if enabled).
   const pinParts: Record<Intent, string[]> = { industries: ["summary", "experience"], employers: ["experience"], skills: ["skills", "summary"], capabilities: ["summary", "skills"], resume: ["summary", "experience", "skills", "education"], general: [] };
   const pinned = scored.filter((h) => h.chunk.record_id === "resume" && pinParts[intent].includes(h.chunk.part));
   const rest = scored.filter((h) => h.score > 0 && !pinned.includes(h)).sort((a, b) => b.score - a.score || a.chunk.id.localeCompare(b.chunk.id));
+  // Diversity: at most `perRecord` chunks per restatement group (a record and its copies / restatements share the
+  // slots, so near-identical records cannot crowd out distinct ones). The resume's own chunks are never limited, and
+  // once the resume itself is in context its restatements add nothing, so they are left out (records the visitor
+  // asks for by reference are added by the caller regardless; see app/api/chat/route.ts).
+  const resumeIn = pinned.length > 0 || rest.some((h) => h.chunk.record_id === "resume");
   const per = new Map<string, number>();
-  let portfolio = 0;
   const hits: Hit[] = [];
   for (const h of pinned) hits.push(h);
   for (const h of rest) {
     if (hits.length >= k + pinned.length) break;
-    const c = per.get(h.chunk.record_id) || 0;
-    if (h.chunk.record_id !== "resume" && c >= perRecord) continue;
-    if (h.chunk.group === "portfolio" && portfolio >= PORTFOLIO_CAP) continue;
-    if (h.chunk.group === "portfolio") portfolio++;
-    per.set(h.chunk.record_id, c + 1);
+    if (h.chunk.record_id !== "resume") {
+      const key = h.chunk.same ?? h.chunk.record_id;
+      if (key === "resume" && resumeIn) continue;
+      const c = per.get(key) || 0;
+      if (c >= perRecord) continue;
+      per.set(key, c + 1);
+    }
     hits.push(h);
   }
   const best = new Map<string, number>();
@@ -215,27 +223,86 @@ export function mentionedIds(answer: string, result: SearchResult, titles: Map<s
 }
 
 /**
- * Card ids for an answer: only records the answer actually cites (IDS line) or names by title. Each must be enabled,
- * in this answer's context, not a portfolio-site record (those restate the resume), and its own evidence (named
- * employer, description, keywords, skills) must contain a specific query term. No score-based fallback: an answer
- * that cites no supported project shows no project cards. Duplicate titles collapse to the first. Project cards are
- * ordered before the resume unless the question asks for the resume (includeResume).
+ * Card ids for an answer (general order for every question):
+ *  - candidates: records the visitor asked for (`asked`: records the understanding step named for a specific project or
+ *    a "show me / open this" request), then records the first answer cites (IDS line) or names by title;
+ *  - each must be enabled and in this answer's context; an asked-for record needs nothing more, any other record's own
+ *    evidence (named employer, description, keywords, skills) must contain a specific query term (cardSupport). No
+ *    score-based fallback: an answer that cites no supported record shows no cards;
+ *  - restatement rule: records in the same restatement group (restatementGroups; same title, near-copy description,
+ *    or about the person like the resume) collapse to ONE card, chosen in priority order: asked-for > the resume >
+ *    cited/named order. So a "who is he" answer shows the resume, not several near-identical site cards, while a record
+ *    the visitor asked to open is shown even if it restates the resume;
+ *  - project cards are ordered before the resume unless the question asks for the resume (includeResume); cap `max`.
  */
-export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; includeResume?: boolean; mentioned?: string[]; titles?: Map<string, string> } = {}): string[] {
+export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; includeResume?: boolean; mentioned?: string[]; titles?: Map<string, string>; asked?: string[] } = {}): string[] {
   const max = opts.max ?? 4;
+  const asked = new Set(opts.asked || []);
   const ctx = new Map<string, Chunk>();
   for (const h of result.hits) if (!ctx.has(h.chunk.record_id)) ctx.set(h.chunk.record_id, h.chunk);
   const supported = (id: string) => {
-    const c = ctx.get(id);
-    if (!c || !enabled.has(id)) return false;
-    if (id === "resume") return true;
-    return c.group !== "portfolio" && cardSupport(result, id).length > 0;
+    if (!ctx.has(id) || !enabled.has(id)) return false;
+    if (id === "resume" || asked.has(id)) return true;
+    return cardSupport(result, id).length > 0;
   };
-  let picked = [...new Set([...cited, ...(opts.mentioned || [])])].filter(supported);
-  if (opts.includeResume && supported("resume") && !picked.includes("resume")) picked.unshift("resume");
+  const cands = [...new Set([...asked, ...cited, ...(opts.mentioned || [])])].filter(supported);
+  const hasResume = cands.includes("resume") || (!!opts.includeResume && supported("resume"));
+  const priority = [...cands.filter((id) => asked.has(id)), ...(hasResume ? ["resume"] : []), ...cands.filter((id) => !asked.has(id) && id !== "resume")];
+  const groupOf = (id: string) => ctx.get(id)?.same ?? id;
+  const seenGroup = new Set<string>(), seenTitle = new Set<string>();
+  const kept: string[] = [];
+  for (const id of priority) {
+    const g = groupOf(id), t = (opts.titles?.get(id) ?? id).toLowerCase();
+    if (seenGroup.has(g) || seenTitle.has(t)) continue;
+    seenGroup.add(g); seenTitle.add(t); kept.push(id);
+  }
   // Supported project cards come first; unless the question is about the resume, the resume is one card among them
   // (after the projects), not slot 1. It stays the only card when no project is supported (e.g. Freeport).
-  else if (!opts.includeResume && picked.includes("resume") && picked.some((id) => id !== "resume")) picked = [...picked.filter((id) => id !== "resume"), "resume"];
-  const seen = new Set<string>();
-  return picked.filter((id) => { const t = opts.titles?.get(id) ?? id; if (seen.has(t)) return false; seen.add(t); return true; }).slice(0, max);
+  const projects = kept.filter((id) => id !== "resume"), resume = kept.includes("resume") ? ["resume"] : [];
+  return (opts.includeResume && !asked.size ? [...resume, ...projects] : [...projects, ...resume]).slice(0, max);
 }
+
+// ---- restatement rule (general: no record, record class or prompt word is special-cased) ----
+const normT = (s: string) => s.toLowerCase().replace(/\s+/g, " ").trim();
+/** Jaccard overlap of two descriptions' word sets (0..1). */
+export function descOverlap(a?: string | null, b?: string | null): number {
+  if (!a || !b) return 0;
+  const x = new Set(tokenize(a)), y = new Set(tokenize(b));
+  if (!x.size || !y.size) return 0;
+  let n = 0;
+  for (const t of x) if (y.has(t)) n++;
+  return n / (x.size + y.size - n);
+}
+/** Descriptions at least this similar describe the same thing (copies / alternate builds of one site or app). */
+export const NEAR_COPY = 0.8;
+/** A record titled with the person's own name (its first title segment before "—", "|" or ":" is the resume's name)
+ * is about the person, i.e. a restatement of the resume. */
+export function aboutPerson(title: string | undefined, person: string | null | undefined): boolean {
+  if (!title || !person) return false;
+  return normT(title.split(/\s*[—|:]\s*/)[0] || "") === normT(person);
+}
+/**
+ * Restatement groups over enabled records. Two records restate each other when
+ *  1. they share a title (alternate builds), or
+ *  2. their descriptions are near-copies (word overlap >= NEAR_COPY), or
+ *  3. both are about the person: the resume itself, or a record titled with the person's name (aboutPerson);
+ * and restatement is transitive (a near-copy of a restatement is a restatement). Returns record id -> group key
+ * ("resume" for the resume's group, otherwise the group's first record in master order).
+ */
+export function restatementGroups(records: MasterRecordLite[]): Map<string, string> {
+  const recs = records.filter((r) => r.indexable);
+  const person = recs.find((r) => r.kind === "resume")?.resume?.name ?? null;
+  const parent = recs.map((_, i) => i);
+  const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+  const join = (i: number, j: number) => { const a = find(i), b = find(j); if (a !== b) parent[Math.max(a, b)] = Math.min(a, b); };
+  const isPerson = recs.map((r) => r.kind === "resume" || aboutPerson(r.title, person));
+  for (let i = 0; i < recs.length; i++)
+    for (let j = i + 1; j < recs.length; j++)
+      if (normT(recs[i].title) === normT(recs[j].title) || (isPerson[i] && isPerson[j]) || descOverlap(recs[i].description, recs[j].description) >= NEAR_COPY) join(i, j);
+  const resumeIdx = recs.findIndex((r) => r.kind === "resume");
+  const out = new Map<string, string>();
+  recs.forEach((r, i) => out.set(r.id, resumeIdx >= 0 && find(i) === find(resumeIdx) ? "resume" : recs[find(i)].id));
+  return out;
+}
+/** Whether record a restates record b (same restatement group). */
+export const restates = (groups: Map<string, string>, a: string, b: string) => a === b || (groups.has(a) && groups.get(a) === groups.get(b));
