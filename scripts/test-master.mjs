@@ -493,6 +493,8 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   const disp = MS.displayCardIds(tp.ids), pcard = MS.portfolioCard();
   ok(disp[0] === "traditional-portfolio" && pcard.id === disp[0] && pcard.liveUrl === "https://uxapex.com/portfolio", "a selected portfoprod maps to the special traditional-portfolio card (https://uxapex.com/portfolio, PortfolioSheet)");
   ok(eq(MS.displayCardIds(["virtuallabs", "resume", "dls"]), ["virtuallabs", "resume", "dls"]), "display mapping leaves every other card id unchanged (ProjectSheet)");
+  const ow = q("Open his portfolio website");
+  ok(ow.terms.length === 0 && !pickCardIds(ow.hits.map((h) => h.chunk.record_id), ow, en, { titles }).some((id) => id !== "resume"), "request/navigation words (open, website …) alone support no card (e.g. not the job board for 'open roles')");
   const vl = await routeLike("Pull up the Odysseyware labs site", { intent: "open", query: "Odysseyware Virtual Science Labs site", topics: ["virtuallabs"] }, []);
   ok(vl.u.intent === "open" && vl.ids[0] === "virtuallabs" && eq(MS.displayCardIds(vl.ids), vl.ids), "open intent is general: a second fixture (Virtual Labs) is selected the same way, as a regular card");
   const ap = await routeLike("Show me the chat portfolio app itself", { intent: "open", query: "chat-based portfolio app", topics: ["portforag-test"] }, ["resume"]);

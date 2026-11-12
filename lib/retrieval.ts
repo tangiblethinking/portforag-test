@@ -100,8 +100,9 @@ export function chunksVersion(chunks: Chunk[]): string {
   return `fnv1a-${chunks.length}-${h.toString(16)}`;
 }
 
-// Words too generic to show that a record is about the question on its own.
-const GENERIC = new Set(tokenize("design designed designer ux ui product work worked project build built experience christopher kenreigh portfolio case study page site web app application system user"));
+// Words too generic to show that a record is about the question on its own — including the visitor's request and
+// navigation words ("open / view / visit / pull up this website"), which say how to see something, not what it is.
+const GENERIC = new Set(tokenize("design designed designer ux ui product work worked project build built experience christopher kenreigh portfolio case study page site web app application system user open opened view visit see pull up website webpage link"));
 
 // Multi-word topic phrases built from GENERIC words ("design" + "system" …). Each word alone stays too generic, but the
 // phrase is specific: a question naming the phrase can be supported by a record whose OWN evidence (description,
