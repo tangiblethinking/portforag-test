@@ -3,7 +3,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { withKey, type KeyOpts } from "./keys";
 import { answerSystem, refineAnswer } from "./refine";
-import { enabledRecords, getMaster } from "./master";
+import { displayText, enabledRecords, getMaster } from "./master";
 import { buildChunks, chunksVersion, search, type Chunk, type Hit, type SearchResult } from "./retrieval";
 const G = "https://generativelanguage.googleapis.com/v1beta/models";
 export const MODEL = process.env.GEMINI_MODEL || "gemini-3.5-flash-lite";
@@ -77,7 +77,7 @@ export function recordHits(id: string): Hit[] {
 
 const contextOf = (hits: Hit[]) => {
   const byId = new Map(getMaster().records.map((r) => [r.id, r]));
-  return hits.map((h, i) => `[${i + 1}] (record_id=${h.chunk.record_id}; title=${byId.get(h.chunk.record_id)?.title ?? h.chunk.record_id})\n${h.chunk.text}`).join("\n\n");
+  return hits.map((h, i) => `[${i + 1}] (record_id=${h.chunk.record_id}; title=${byId.get(h.chunk.record_id)?.title ?? h.chunk.record_id})\n${displayText(h.chunk.text)}`).join("\n\n");
 };
 
 /** First pass: the draft answer from records only, ending with an IDS line (system prompt: lib/refine.ts answerSystem). */

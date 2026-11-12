@@ -622,5 +622,31 @@ ok((cards.match(/<iframe/g) || []).length === 2 && (landing.match(/<iframe/g) ||
 ok(/<ProjectCardGrid cards=\{browse\}/.test(landing) && /<ProjectCardGrid cards=\{recent\.slice\(0, top\.shown\)\} onOpen=\{setSheet\} \/>/.test(landing) && /Load more/.test(landing), "Browse + Recent Work keep approved grid + Load more");
 ok(!/ExploreCard|NavCard|function Thumb|kind: "work"/.test(landing) && !fs.existsSync("components/Chat.tsx"), "no legacy card paths");
 
+// ---- display URLs: routed deployments are shown/cited at https://uxapex.com{path} (router snapshot) ----
+{
+  const MS = await import("../lib/master.ts");
+  const live = JSON.parse(read("data/appproto-vercel.json")).rewrites;
+  ok(live.some((x) => x.source === "/:path*" && x.destination === "https://portforag-test.vercel.app/:path*") && live.some((x) => x.source === "/" && x.destination === "https://portforag-test.vercel.app"), "router snapshot matches live AppProtoNeoRouter (catch-all -> portforag-test)");
+  const EXPECT = { interview: "/interview", portfoprod: "/portfolio", "ats-x2-prod-main": "/jobs", moderncheckout: "/cart", oma: "/oma", infoarchdesign: "/ia", virtuallabs: "/vlabs", "html-test": "/laws", "ape-x-apple-cl007v1-gemini-001": "/ape", appprotoneov001ai: "/portfolioa32", designopscasestudy: "/designops", "directorcasestudy-ux-bgoals": "/ecomm", companyuxtransform: "/uxtrans", teststudynew: "/discovery", persongratadata: "/persona", opodesignonovo: "/collaboration" };
+  for (const [id, p] of Object.entries(EXPECT)) {
+    const r = R.get(id), c = MS.recordToCard(r);
+    ok(c.liveUrl === `https://uxapex.com${p}` && MS.publicUrl(r) === c.liveUrl && r.deployment.live_url && /\.vercel\.app/.test(r.deployment.live_url), `routed ${id}: card iframe + public URL = https://uxapex.com${p} (no www, no trailing slash); master live_url unchanged`);
+  }
+  const routed = [...MS.routes().byRecord.keys()].sort();
+  ok(eq(routed, Object.keys(EXPECT).sort()), "exactly the concrete router rewrites are remapped (no catch-all, no /job, no invented paths)");
+  ok([...MS.routes().byRecord.values()].every((u) => /^https:\/\/uxapex\.com\/[a-z0-9]+$/.test(u)), "display URLs: apex uxapex.com, single path, no www/trailing slash");
+  ok(R.get("html-test").deployment.live_url === "https://uxlegal.vercel.app" && R.get("designopscasestudy").deployment.live_url === "https://design-ops-case-study-alt.vercel.app", "laws/designops matched although live_url differs from the router destination");
+  for (const id of ["japan-case-study", "minicms", "dls", "pvoc", "appprotoneov002", "portfocorrect"]) { const r = R.get(id); ok(MS.recordToCard(r).liveUrl === r.deployment.live_url && /\.vercel\.app$/.test(r.deployment.live_url), `unrouted ${id}: keeps recorded live_url`); }
+  for (const id of ["appprotoneorouter", "portforag-test"]) { const r = R.get(id); ok(MS.recordToCard(r).liveUrl === r.deployment.live_url && MS.recordToCard(r).liveUrl !== "https://uxapex.com/" && MS.recordToCard(r).liveUrl !== "https://uxapex.com", `catch-all / chat record ${id} not remapped to the router root`); }
+  ok(MS.portfolioCard().liveUrl === "https://uxapex.com/portfolio" && eq(MS.displayCardIds(["directorcasestudy-ux-bgoals"]), ["directorcasestudy-ux-bgoals"]), "portfolio card still uxapex.com/portfolio (PortfolioSheet); routed ecomm stays a regular card (ProjectSheet with details)");
+  const rc = MS.recentCards(JSON.parse(read("data/recent-work.json")).items);
+  ok(rc.length > 0 && rc.every((c) => /^https:\/\/uxapex\.com\/[a-z0-9]+$/.test(c.liveUrl)) && rc.find((c) => c.id === "recent-ecomm").liveUrl === "https://uxapex.com/ecomm" && rc.find((c) => c.id === "recent-laws").liveUrl === "https://uxapex.com/laws", "Recent Work cards iframe the uxapex.com router path");
+  const ctx = MS.displayText(chunks.find((c) => c.record_id === "directorcasestudy-ux-bgoals").text);
+  ok(ctx.includes("https://uxapex.com/ecomm") && !/director-case-study-ux-bgoals\.vercel\.app/.test(ctx) && MS.displayText("see https://japan-case-study.vercel.app.") === "see https://japan-case-study.vercel.app.", "model context cites the router path for routed records; unrouted URLs unchanged");
+  ok(chunks.find((c) => c.record_id === "directorcasestudy-ux-bgoals").text.includes("director-case-study-ux-bgoals.vercel.app"), "stored chunk text (master facts) not rewritten");
+  ok(/displayText\(h\.chunk\.text\)/.test(read("lib/rag.ts")) && /liveUrl: displayUrl\(r\)/.test(read("lib/master.ts")), "display URL wired into cards and answer context");
+  ok(!/portfolio/i.test(read("lib/master.ts").slice(read("lib/master.ts").indexOf("// ---- display URLs"), read("lib/master.ts").indexOf("/** Short distinguishing label"))), "display-URL rule has no portfolio branch");
+}
+
 console.log(`test-master: ${pass} passed, ${fail} failed`);
 process.exit(fail ? 1 : 0);

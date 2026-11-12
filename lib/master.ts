@@ -49,7 +49,7 @@ export function recordToCard(r: MasterRecord): ProjectCardData {
     date: r.dates?.display ?? null,
     summary: r.description,
     skills: r.skills,
-    liveUrl: r.deployment.live_url,
+    liveUrl: displayUrl(r),
     image: toCardImage(r.image),
   };
 }
@@ -83,16 +83,65 @@ export function recentCards(items: RecentWorkItem[]): ProjectCardData[] {
       const named = rec.images.find((im) => im.file === x.image);
       if (named) base.image = toCardImage(named);
     }
-    out.push({ ...base, id: `recent-${it.id}`, title: it.title, liveUrl: it.url });
+    out.push({ ...base, id: `recent-${it.id}`, title: it.title, liveUrl: (rec && routes().byRecord.get(rec.id)) || displayForUrl(it.url) });
   }
   return out;
 }
 
-/** Public address of a record: a non-vercel.app alias URL that resolves to it (e.g. a uxapex.com route), else its
- * live URL; null if neither is recorded. Only recorded URLs are used. */
+// ---- display URLs from the uxapex.com router (data/appproto-vercel.json = AppProtoNeoRouter vercel.json snapshot) ----
+// A deployment served by a concrete router rewrite (e.g. /ecomm -> director-case-study-ux-bgoals.vercel.app) is built
+// for that subpath (its assets live under /ecomm/…), so it is shown at https://uxapex.com{path}: apex host, no www, no
+// trailing slash. Only concrete rewrites count — the "/" and "/:path*" catch-all (this chat app) and wildcard or
+// router-local destinations (/job -> /job.html) are ignored. Unrouted records keep their recorded live_url.
+export const ROUTER_ORIGIN = "https://uxapex.com";
+type Rewrite = { source: string; destination: string };
+const normUrl = (u: string) => u.trim().replace(/^http:\/\//i, "https://").replace(/[?#].*$/, "").replace(/\/+$/, "").toLowerCase();
+const isRouterRoot = (u: string | null | undefined) => !!u && /^https:\/\/(www\.)?uxapex\.com$/.test(normUrl(u));
+let RT: { byDest: Map<string, string>; byRecord: Map<string, string> } | null = null;
+/** Concrete router rewrites: normalized destination -> display URL, and record id -> display URL. Records match a
+ * rewrite by any of their recorded URLs (live_url, deployment links, URL aliases) equal to its destination, or by an
+ * existing alias for the router path itself (www.uxapex.com/laws -> html-test). */
+export function routes() {
+  if (RT) return RT;
+  const m = getMaster();
+  const file = path.join(process.cwd(), "data/appproto-vercel.json");
+  const rewrites: Rewrite[] = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")).rewrites || [] : [];
+  const urlsOf = new Map<string, string[]>();
+  const add = (u: string | null | undefined, id: string) => { if (u) urlsOf.set(normUrl(u), [...(urlsOf.get(normUrl(u)) || []), id]); };
+  for (const r of m.records) { add(r.deployment.live_url, r.id); for (const l of r.deployment.links) add(l.url, r.id); }
+  for (const [u, id] of Object.entries(m.aliases.urls)) add(u, id);
+  const routerRecord = new Set(m.records.filter((r) => isRouterRoot(r.deployment.live_url) || r.deployment.links.some((l) => isRouterRoot(l.url))).map((r) => r.id));
+  const byDest = new Map<string, string>(), byRecord = new Map<string, string>();
+  for (const rw of rewrites) {
+    const src = (rw.source || "").replace(/\/+$/, "");
+    if (!src || /[:*()]/.test(src) || !/^https?:\/\//i.test(rw.destination || "") || /[:*]/.test(rw.destination.replace(/^https?:\/\//i, ""))) continue;
+    const display = ROUTER_ORIGIN + src, dest = normUrl(rw.destination);
+    if (isRouterRoot(dest) || byDest.has(dest)) continue;
+    byDest.set(dest, display);
+    const ids = new Set([...(urlsOf.get(dest) || []), ...(urlsOf.get(normUrl(display)) || []), ...(urlsOf.get(normUrl(`https://www.uxapex.com${src}`)) || [])]);
+    for (const id of ids) if (!routerRecord.has(id) && !byRecord.has(id)) byRecord.set(id, display);
+  }
+  return (RT = { byDest, byRecord });
+}
+/** The URL a record is shown and cited at: its uxapex.com router path when routed, else its recorded live_url. */
+export function displayUrl(r: MasterRecord): string | null {
+  return routes().byRecord.get(r.id) || r.deployment.live_url || null;
+}
+/** Display form of one recorded URL: the router path when it is a routed destination (or an alias of a routed record),
+ * else the URL unchanged. Never invents a URL. */
+export function displayForUrl(u: string): string {
+  const n = normUrl(u), rt = routes();
+  if (rt.byDest.has(n)) return rt.byDest.get(n)!;
+  const id = getMaster().aliases.urls[u] ?? Object.entries(getMaster().aliases.urls).find(([k]) => normUrl(k) === n)?.[1];
+  return (id && rt.byRecord.get(id)) || u;
+}
+/** Rewrites routed deployment URLs inside model context text to their display URL (stored master text is unchanged). */
+export function displayText(text: string): string {
+  return text.replace(/https?:\/\/[^\s;,()<>"']+/g, (raw) => { const u = raw.replace(/[.:]+$/, ""); return displayForUrl(u) + raw.slice(u.length); });
+}
+/** Public address of a record (understand labels): its display URL; null if no URL is recorded. */
 export function publicUrl(r: MasterRecord): string | null {
-  const alias = Object.entries(getMaster().aliases.urls).find(([u, id]) => id === r.id && !/\.vercel\.app/.test(u))?.[0];
-  return alias || r.deployment.live_url || null;
+  return displayUrl(r);
 }
 /** Short distinguishing label for the understanding step's catalog, built only from the record's own fields:
  * category (family), public address, and the start of its description. */

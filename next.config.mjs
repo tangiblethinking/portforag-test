@@ -1,1 +1,1 @@
-export default { outputFileTracingIncludes: { "/api/chat": ["./data/master.json", "./data/retrieval-index.json", "./data/vectors.json"], "/api/version": ["./data/master.json", "./data/retrieval-index.json"], "/": ["./data/master.json"] } };
+export default { outputFileTracingIncludes: { "/api/chat": ["./data/master.json", "./data/appproto-vercel.json", "./data/retrieval-index.json", "./data/vectors.json"], "/api/version": ["./data/master.json", "./data/retrieval-index.json"], "/": ["./data/master.json", "./data/appproto-vercel.json"] } };
