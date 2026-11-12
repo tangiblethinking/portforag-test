@@ -144,7 +144,9 @@ ok(!/build-master|build:master/.test(JSON.parse(read0("package.json")).scripts.b
   const [b0, b1, b2] = cards.browse;
   ok(cards.browse.length === 3 && b0.id === "resume" && b0.image?.src === "/evidence/" + RESUME_IMG, "Browse: resume card shows the resume image");
   ok(b1.id === "recent" && b1.image?.src === "/evidence/interview--interview-eight-pi--landing.webp", "Browse: Recent Work hub unchanged (still the Interview image)");
-  ok(b2.id === "about" && b2.image === null, "Browse: About unchanged (no image)");
+  ok(b2.id === "about" && b2.title === "About" && b2.summary === "Who Christopher is, how he works, and what to ask next." && eq(b2.skills, ["Design systems", "Design-to-code pipelines", "Data-heavy dashboards", "AI-native (RAG) workflows"]), "Browse: About title, summary and skills unchanged");
+  ok(eq(b2.image, { src: "/browse/about--portrait.webp", alt: "Portrait of Christopher Kenreigh", width: 1000, height: 558 }), "Browse: About shows the supplied portrait");
+  { const f = fs.readFileSync("public/browse/about--portrait.webp"); ok(f.subarray(8, 12).toString() === "WEBP" && f.readUInt32LE(0) > 0, "About portrait file is a webp in public/browse"); }
   m2.records.find((r) => r.id === "virtuallabs").manual = { bogus: 1 };
   ok(validateMaster(m2).some((e) => /not an editable field/.test(e)), "validation rejects non-editable manual fields");
   ok(out.records.filter((r) => r.id !== "virtuallabs").every((r) => r.indexable === R.get(r.id).indexable), "refresh leaves other toggles as they were");
