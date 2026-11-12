@@ -1,11 +1,13 @@
-import { retrieve, answer, interpretModel, recordHits } from "@/lib/rag";
+import { retrieve, answer, refine, interpretModel, recordHits } from "@/lib/rag";
 import { cardSupport, mentionedIds, pickCardIds, type Hit, type SearchResult } from "@/lib/retrieval";
 import { enabledIds, enabledRecords, getMaster, resolveId } from "@/lib/master";
 import { understand, offeredTitles, orderOfferRecs, pickOffer, offerLine, yesMessage, type OfferRec, type Understanding } from "@/lib/understand";
-import { NoKeyError } from "@/lib/keys";
+import { KeyTimeoutError, NoKeyError } from "@/lib/keys";
 import { FOLLOWUPS, LOADING, intent, type Chip } from "@/lib/config";
 export const runtime = "nodejs";
-export const maxDuration = 30;
+export const maxDuration = 60;
+/** Gemini work must finish inside this budget (maxDuration minus headroom for retrieval and the response). */
+const BUDGET_MS = 55_000;
 const hits = new Map<string, number[]>(); // per-instance rate limit
 function limited(ip: string) { const now = Date.now(); const a = (hits.get(ip) || []).filter(t => now - t < 60_000); a.push(now); hits.set(ip, a); return a.length > 12; }
 
@@ -34,6 +36,7 @@ const chips = (list: string[]): Chip[] => list.map((s) => ({ label: s, message: 
 const chipKey = (u: Understanding, q: string, title?: string) => (u.intent === "identity" ? "who" : u.intent === "resume" ? "resume" : intent(title || u.query || q));
 
 export async function POST(req: Request) {
+  const deadline = Date.now() + BUDGET_MS;
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0] || "x";
   if (limited(ip)) return Response.json({ error: "rate_limited", message: "Easy there — try again in a minute." }, { status: 429 });
   let body: any; try { body = await req.json(); } catch { body = null; }
@@ -46,7 +49,7 @@ export async function POST(req: Request) {
     const recs = offerRecs();
     const titleOf = new Map(recs.map((r) => [r.id, r.title]));
     // 1. Understanding step: interpret the message with recent turns (intent, rewritten query, record ids). No facts.
-    const u = await understand(q, history, recs, interpretModel);
+    const u = await understand(q, history, recs, (p) => interpretModel(p, deadline));
     const exclude = [...offeredTitles(history), ...clientOffered];
     const understanding = { intent: u.intent, query: u.query, topics: u.topics, source: u.source };
     if (u.intent === "decline") {
@@ -57,7 +60,9 @@ export async function POST(req: Request) {
       // 2a. Accepted offer: direct path — the record's own chunks and its card, no new search that could miss.
       const id = u.record_id, title = titleOf.get(id)!;
       const own = recordHits(id);
-      text = (await answer(`Tell me about ${title}.`, history, own)).replace(/IDS:.*$/is, "").trim();
+      const ask = `Tell me about ${title}.`;
+      const draft = (await answer(ask, history, own, undefined, { deadline })).replace(/IDS:.*$/is, "").trim();
+      text = (await refine(ask, own, draft, undefined, deadline)).text; // same evidence; card stays this record
       ids = enabledIds().has(id) ? [id] : [];
       sources = [id];
       mode = "direct";
@@ -68,13 +73,16 @@ export async function POST(req: Request) {
       const have = new Set(base.hits.map((h) => h.chunk.record_id));
       const extra: Hit[] = u.topics.filter((id) => id !== "resume" && !have.has(id)).flatMap((id) => recordHits(id).map((h) => ({ ...h, score: 0 })));
       const found: SearchResult = { ...base, hits: [...base.hits, ...extra] };
-      const raw = await answer(q, history, found.hits, u.query !== q ? u.query : undefined);
-      const m = raw.match(/IDS:\s*(.*)\s*$/i);
-      text = raw.replace(/IDS:.*$/is, "").trim();
+      const interpreted = u.query !== q ? u.query : undefined;
+      const raw = await answer(q, history, found.hits, interpreted, { deadline });
+      const m = raw.match(/IDS:\s*(.*)\s*$/i); // card ids come from the first pass only; refinement never changes them
+      const draft = raw.replace(/IDS:.*$/is, "").trim();
+      // 2c. Refinement pass: same question, interpretation and evidence (no new retrieval); falls back to the draft
+      text = (await refine(q, found.hits, draft, interpreted, deadline)).text;
       // Cited ids are resolved to canonical master ids and kept only if enabled AND in this answer's context.
       const cited = (m?.[1] || "").split(",").map(s => resolveId(s.replace(/[*`\[\]]/g, "").trim())).filter((x): x is string => !!x);
       const titles = new Map(getMaster().records.map((r) => [r.id, r.title]));
-      const mentioned = mentionedIds(text, found, titles);
+      const mentioned = mentionedIds(draft, found, titles); // first-pass text, so refinement cannot change cards
       ids = pickCardIds(cited, found, enabledIds(), { includeResume: intent(q) === "resume" || u.intent === "identity" || u.intent === "resume", mentioned, titles, max: 3 }); // the chat shows at most 3 cards
       preferred = pickCardIds(cited, found, enabledIds(), { mentioned, titles, max: 20 }).filter((id) => !ids.includes(id));
       sources = [...new Set(found.hits.map(h => h.chunk.record_id))];
@@ -94,6 +102,7 @@ export async function POST(req: Request) {
   } catch (e) {
     if (e instanceof NoKeyError) return Response.json({ error: "all_keys_busy", message: "I’m catching my breath — the AI is busy right now. Try a suggestion below or open the resume." }, { status: 503 });
     console.error(e);
+    if (e instanceof KeyTimeoutError) return Response.json({ error: "timeout", message: "The AI took too long to answer. Here’s the full portfolio in the meantime." }, { status: 504 });
     return Response.json({ error: "server_error", message: "Something went wrong. Please try again." }, { status: 500 });
   }
 }

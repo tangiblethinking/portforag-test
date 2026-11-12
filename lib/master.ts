@@ -87,3 +87,16 @@ export function recentCards(items: RecentWorkItem[]): ProjectCardData[] {
   }
   return out;
 }
+
+/** Where the traditional portfolio is served (the uxapex.com /portfolio route); the record's own live_url is unchanged. */
+export const PORTFOLIO_URL = "https://uxapex.com/portfolio";
+export const PORTFOLIO_CARD_ID = "traditional-portfolio";
+/**
+ * The traditional-portfolio card for the header "Portfolio" item and the chat's failure fallback: title, summary,
+ * company, date, skills and capture from the master `portfoprod` record; only the display URL is the uxapex.com route.
+ * An explicit exception to "portfolio-site records are not chat cards" — normal retrieval/cards still exclude them.
+ */
+export function portfolioCard(): ProjectCardData | null {
+  const r = getMaster().records.find((x) => x.id === "portfoprod");
+  return r ? { ...recordToCard(r), id: PORTFOLIO_CARD_ID, liveUrl: PORTFOLIO_URL } : null;
+}

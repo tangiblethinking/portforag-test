@@ -5,3 +5,5 @@ body { font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 @keyframes up { from { transform: translateY(100%) } to { transform: translateY(0) } }
 .sheet { animation: up .28s cubic-bezier(.2,.8,.2,1); }
+@keyframes in-right { from { transform: translateX(100%) } to { transform: translateX(0) } }
+.drawer { animation: in-right .28s cubic-bezier(.2,.8,.2,1); }

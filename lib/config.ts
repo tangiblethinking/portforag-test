@@ -79,3 +79,23 @@ export function intent(q: string) {
   if (/skill|design system/.test(s)) return "skills";
   return "default";
 }
+/**
+ * Draws items without replacement: every item is shown once (shuffled) before any repeats; when the deck runs out it
+ * is reshuffled, and the first draw of a new deck is never the item just shown.
+ */
+export function makeDeck<T>(items: readonly T[], rand: () => number = Math.random): () => T {
+  let deck: T[] = [];
+  let last: T | undefined;
+  return () => {
+    if (!deck.length) {
+      deck = [...items];
+      for (let i = deck.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [deck[i], deck[j]] = [deck[j], deck[i]];
+      }
+      if (deck.length > 1 && deck[0] === last) [deck[0], deck[deck.length - 1]] = [deck[deck.length - 1], deck[0]];
+    }
+    last = deck.shift() as T;
+    return last;
+  };
+}
