@@ -214,6 +214,62 @@ for (const [s, want] of [["Tell me about the Freeport dashboards", "resume"], ["
   ok(q(s).records.slice(0, 3).some((x) => x.id === want), `"${s}" -> ${want} in top 3`);
 ok(pickCardIds([], q("zzqx flibbertigibbet"), new Set(M.records.map((x) => x.id))).length === 0, "no forced cards when nothing matches");
 ok(detectIntent("Pull up the resume") === "resume", "resume intent");
+// ---- card diversity: topic phrases count as a record's own support (Nov 11, 2026) ----
+{
+  const titles = new Map(M.records.map((x) => [x.id, x.title]));
+  const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
+  const DS = ["dls", "minicms", "minicms2", "revopoc", "pvoc", "japan-case-study"];
+  const titleOf = (ids) => new Set(ids.map((id) => titles.get(id)));
+  for (const s of ["Show me the design system work", "Which projects used design systems?"]) {
+    const r = q(s);
+    ok(r.terms.includes("design system") && DS.every((id) => r.hits.some((h) => h.chunk.record_id === id) && cardSupport(r, id).includes("design system")), `"${s}": design-system records in context, supported by the phrase`);
+    // the model cites/names the design-system work (as in live answers); every one becomes a card (titles merge)
+    const cards = pickCardIds(["resume", ...DS], r, en, { titles, max: 8 });
+    ok(["Tangible DLS", "Compositional Canvas", "Pulse Kit", titles.get("japan-case-study")].every((t) => titleOf(cards).has(t)), `"${s}": design-system project cards shown`);
+    ok(cards.some((id) => id !== "resume"), `"${s}": not resume-only`);
+    const named = pickCardIds([], r, en, { titles, mentioned: mentionedIds("Key work: Compositional Canvas, Tangible DLS and Pulse Kit.", r, titles) });
+    ok(named.length >= 3 && !named.includes("resume"), `"${s}": named titles alone yield cards (never zero)`);
+    // a cited in-context record without the phrase in its own evidence is not carded
+    const weak = r.hits.map((h) => h.chunk.record_id).find((id) => id !== "resume" && !DS.includes(id) && !cardSupport(r, id).length);
+    ok(weak && !pickCardIds([weak], r, en, { titles }).includes(weak), `"${s}": weakly related cited record (${weak}) not carded`);
+  }
+  // single generic words stay blocked on their own
+  for (const s of ["Show me the design work", "Tell me about his system work", "Show product UX experience"]) {
+    const r = q(s);
+    ok(r.terms.length === 0 && pickCardIds(r.hits.map((h) => h.chunk.record_id).filter((id) => id !== "resume"), r, en, { titles }).length === 0, `"${s}": generic words alone qualify no card`);
+  }
+  // phrases match the record's own evidence only (variants: DesignOps / design operations)
+  const ops = q("How does he approach design ops and governance?");
+  ok(["designopscasestudy", "opodesignonovo"].every((id) => cardSupport(ops, id).includes("design ops")), "design ops phrase matches DesignOps / design operations evidence");
+  // unindexed records stay out even when they are design-system tools; Feature does not override indexable
+  const r = q("Show me the design system work");
+  ok(!pickCardIds(["canvas", "pcms", "psms-mbl", "dls"], r, en, { titles }).some((id) => DISABLED.includes(id)), "disabled design-system records never carded");
+  const dlsOff = M.records.map((x) => (x.id === "dls" ? { ...x, indexable: false } : x));
+  const rOff = q("Show me the design system work", buildChunks(dlsOff));
+  ok(R.get("dls").recommendation === "Feature" && !rOff.hits.some((h) => h.chunk.record_id === "dls") && !pickCardIds(["dls"], rOff, new Set(dlsOff.filter((x) => x.indexable).map((x) => x.id)), { titles }).includes("dls"), "Feature dls switched off: not retrieved, not carded");
+  // fair resume-only control: Freeport exists only in the resume and portfolio-site records
+  const fr = q("Tell me about the Freeport dashboards");
+  ok(eq(pickCardIds(fr.hits.map((h) => h.chunk.record_id), fr, en, { titles }), ["resume"]), "Freeport dashboards: resume-only (portfolio-site records never carded)");
+  // the two screenshot questions (original wording) can produce project cards when project evidence exists
+  const lead = q("Can he lead a design system across teams?");
+  ok(pickCardIds(["resume", "revopoc"], lead, en, { titles }).includes("revopoc"), "original 'lead a design system' question: Pulse Kit card possible");
+  const eng = q("Has he collaborated closely with engineering and PM?");
+  ok(pickCardIds(["resume", "pvoc"], eng, en, { titles }).includes("pvoc"), "original 'engineering and PM' question: Pulse Kit card possible");
+}
+// ---- staged prompts: every pool / follow-up prompt can surface a project card, except fair resume-only ones ----
+{
+  const cfg = await import("../lib/config.ts");
+  const RESUME_ONLY = ["Who is Christopher Kenreigh?", "Tell me about the Freeport dashboards", "Current role details", "Pull up the resume"];
+  const prompts = [...new Set([...cfg.OPENING, ...cfg.HIRING_ASKS, ...Object.values(cfg.FOLLOWUPS).flat()])];
+  const en = new Set(M.records.filter((x) => x.indexable).map((x) => x.id));
+  const cardable = (s) => { const r = q(s); return [...new Set(r.hits.map((h) => h.chunk.record_id))].filter((id) => id !== "resume" && en.has(id) && r.hits.find((h) => h.chunk.record_id === id).chunk.group !== "portfolio" && cardSupport(r, id).length); };
+  const none = prompts.filter((s) => !RESUME_ONLY.includes(s) && !cardable(s).length);
+  ok(none.length === 0, `every staged prompt has supported project evidence (none: ${none.join(" | ")})`);
+  ok(!prompts.some((s) => ["Can he lead a design system across teams?", "Has he collaborated closely with engineering and PM?", "Who is this guy?", "Show current work"].includes(s)), "resume-only staged prompts reworded");
+  ok(cfg.HIRING_ASKS.length === 30 && new Set(cfg.HIRING_ASKS).size === 30, "pool keeps 30 distinct prompts");
+  for (const [s, id] of [["How has he built and documented design systems like Pulse Kit and Tangible DLS?", "dls"], ["Which projects show his cross-functional collaboration with engineers and SMEs?", "virtuallabs"], ["How did he assess design team maturity in the Design Ops Case Study?", "designopscasestudy"], ["How did he approach the 0→1 Japan market launch at Plexus?", "japan-case-study"]])
+    ok(cardable(s).includes(id), `reworded "${s}" supports ${id}`);
+}
 // disabled exclusion (incl. stale paths)
 {
   const disabled = M.records.map((r) => (r.id === "virtuallabs" ? { ...r, indexable: false } : r));

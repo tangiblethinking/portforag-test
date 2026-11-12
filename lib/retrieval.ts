@@ -101,6 +101,19 @@ const PORTFOLIO_WEIGHT = 0.6, PORTFOLIO_CAP = 2;
 // Words too generic to show that a record is about the question on its own.
 const GENERIC = new Set(tokenize("design designed designer ux ui product work worked project build built experience christopher kenreigh portfolio case study page site web app application system user"));
 
+// Multi-word topic phrases built from GENERIC words ("design" + "system" …). Each word alone stays too generic, but the
+// phrase is specific: a question naming the phrase can be supported by a record whose OWN evidence (description,
+// keywords, functional keywords, skills, named employer) contains it. Variants that appear in the records are covered
+// (design-system, design systems, design language system, DesignOps, design operations).
+export const TOPIC_PHRASES: { key: string; re: RegExp }[] = [
+  { key: "design system", re: /\bdesign[- ]?(?:language[- ])?systems?\b/i },
+  { key: "design language", re: /\bdesign[- ]language\b/i },
+  { key: "design ops", re: /\bdesign[- ]?op(?:eration)?s\b/i },
+  { key: "design tokens", re: /\bdesign[- ]tokens?\b/i },
+  { key: "design-to-code", re: /\bdesign[- ]to[- ]code\b/i },
+];
+const PHRASE = new Map(TOPIC_PHRASES.map((p) => [p.key, p.re]));
+
 // Query vocabulary for broad questions. These terms only steer retrieval; answers must still come from context.
 const INDUSTRY_TERMS = "industry industrial ecommerce commerce retail checkout cart b2b saas enterprise mining operational edtech education educational k12 lms learning curriculum school selfstorage storage kiosk legal compliance healthcare wellness nutrition supplement finance recruiting hiring hr manufacturing automation".split(" ");
 const SKILL_TERMS = "skill design system token figma react typescript next tailwind accessibility wcag research prototyping information architecture ai rag prompt".split(" ");
@@ -175,13 +188,17 @@ export function search(chunks: Chunk[], query: string, opts: SearchOptions = {})
   // An explicit resume request ranks the resume record first.
   if (intent === "resume" && inHits.has("resume")) records.sort((a, b) => (a.id === "resume" ? -1 : b.id === "resume" ? 1 : 0));
   const terms = [...weights.keys()].filter((t) => !GENERIC.has(t));
+  for (const p of TOPIC_PHRASES) if (p.re.test(query)) terms.push(p.key);
   return { intent, hits, records, terms };
 }
 
-/** Query terms the record's own substantive evidence contains (empty = the card is not supported on its own). */
+/** Query terms (single words, or topic phrases from TOPIC_PHRASES) the record's own substantive evidence contains
+ * (empty = the card is not supported on its own). */
 export function cardSupport(result: SearchResult, recordId: string): string[] {
-  const ev = new Set(result.hits.filter((h) => h.chunk.record_id === recordId).flatMap((h) => tokenize(h.chunk.evidence)));
-  return result.terms.filter((t) => ev.has(t));
+  const own = result.hits.filter((h) => h.chunk.record_id === recordId).map((h) => h.chunk.evidence);
+  const ev = new Set(own.flatMap((e) => tokenize(e)));
+  const raw = own.join("\n");
+  return result.terms.filter((t) => { const re = PHRASE.get(t); return re ? re.test(raw) : ev.has(t); });
 }
 
 /** Titles (or their distinctive part after ":" / "—", 3+ words) of in-context records that the answer text names. */
