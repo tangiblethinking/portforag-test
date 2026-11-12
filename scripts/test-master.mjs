@@ -253,6 +253,8 @@ ok(detectIntent("Pull up the resume") === "resume", "resume intent");
   // the two screenshot questions (original wording) can produce project cards when project evidence exists
   const lead = q("Can he lead a design system across teams?");
   ok(pickCardIds(["resume", "revopoc"], lead, en, { titles }).includes("revopoc"), "original 'lead a design system' question: Pulse Kit card possible");
+  ok(eq(pickCardIds(["resume", "revopoc"], lead, en, { titles }), ["revopoc", "resume"]), "supported project cards come before the resume");
+  ok(pickCardIds(["virtuallabs"], q("Pull up the resume"), en, { titles, includeResume: true })[0] === "resume", "resume questions keep the resume first");
   const eng = q("Has he collaborated closely with engineering and PM?");
   ok(pickCardIds(["resume", "pvoc"], eng, en, { titles }).includes("pvoc"), "original 'engineering and PM' question: Pulse Kit card possible");
 }

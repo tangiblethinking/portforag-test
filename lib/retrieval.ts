@@ -218,7 +218,8 @@ export function mentionedIds(answer: string, result: SearchResult, titles: Map<s
  * Card ids for an answer: only records the answer actually cites (IDS line) or names by title. Each must be enabled,
  * in this answer's context, not a portfolio-site record (those restate the resume), and its own evidence (named
  * employer, description, keywords, skills) must contain a specific query term. No score-based fallback: an answer
- * that cites no supported project shows no project cards. Duplicate titles collapse to the first.
+ * that cites no supported project shows no project cards. Duplicate titles collapse to the first. Project cards are
+ * ordered before the resume unless the question asks for the resume (includeResume).
  */
 export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<string>, opts: { max?: number; includeResume?: boolean; mentioned?: string[]; titles?: Map<string, string> } = {}): string[] {
   const max = opts.max ?? 4;
@@ -230,8 +231,11 @@ export function pickCardIds(cited: string[], result: SearchResult, enabled: Set<
     if (id === "resume") return true;
     return c.group !== "portfolio" && cardSupport(result, id).length > 0;
   };
-  const picked = [...new Set([...cited, ...(opts.mentioned || [])])].filter(supported);
+  let picked = [...new Set([...cited, ...(opts.mentioned || [])])].filter(supported);
   if (opts.includeResume && supported("resume") && !picked.includes("resume")) picked.unshift("resume");
+  // Supported project cards come first; unless the question is about the resume, the resume is one card among them
+  // (after the projects), not slot 1. It stays the only card when no project is supported (e.g. Freeport).
+  else if (!opts.includeResume && picked.includes("resume") && picked.some((id) => id !== "resume")) picked = [...picked.filter((id) => id !== "resume"), "resume"];
   const seen = new Set<string>();
   return picked.filter((id) => { const t = opts.titles?.get(id) ?? id; if (seen.has(t)) return false; seen.add(t); return true; }).slice(0, max);
 }
